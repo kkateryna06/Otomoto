@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import os
 import urllib.parse
+from datetime import datetime
 
 
 # Функция для загрузки HTML контента
@@ -30,6 +31,7 @@ def extract_json_from_html(html_content):
         except json.JSONDecodeError:
             return None
     return None
+
 
 # Функция для извлечения JSON данных из тега <script id="__NEXT_DATA__">
 def extract_json_from_script_tag(html_content):
@@ -70,70 +72,163 @@ def sanitize_filename(url):
     return urllib.parse.quote(url, safe='')
 
 
+# Функция для создания безопасного имени папки
+def create_safe_folder_name(url):
+    folder_name = sanitize_filename(url)
+    folder_path = os.path.join("car_photos", folder_name)
+    os.makedirs(folder_path, exist_ok=True)  # Создаем папку, если ее нет
+    return folder_path
+
+
+# Функция для загрузки фотографий в указанную папку
+def download_images(photo_links, folder_path):
+    for j, photo_url in enumerate(photo_links):
+        try:
+            response = requests.get(photo_url, stream=True)
+            status = response.raise_for_status()
+            photo_path = os.path.join(folder_path, f"photo_{j + 1}.jpg")
+            with open(photo_path, "wb") as photo_file:
+                photo_file.write(response.content)
+        except Exception as e:
+            print(f"Ошибка при загрузке фото {photo_url}: {e}")
+
+
+# Функция для очистки описания от HTML тегов
+def clean_html_description(description_html):
+    # Используем BeautifulSoup для очистки HTML
+    soup = BeautifulSoup(description_html, "html.parser")
+    return soup.get_text(separator=" ").strip()  # Возвращаем только текст, разделенный пробелами
+
+
+# Функция для извлечения данных о машине
+def extract_car_data(link, json_data, data):
+    advert = json_data.get("props", {}).get("pageProps", {}).get("advert", {})
+    # Основная информация о машине
+    car_name = advert.get("title", "Не указано")
+    car_price = advert.get("price", {}).get("value", "Не указано")
+    car_description = clean_html_description(advert.get("description", "Описание отсутствует"))
+    car_mileage = advert.get("mainFeatures", ["Не указано"])[1] if len(
+        advert.get("mainFeatures", [])) > 1 else "Не указано"
+    car_mileage = car_mileage[:len(car_mileage) - 3]
+    car_fuel_type = advert.get("mainFeatures", ["Не указано"])[3] if len(
+        advert.get("mainFeatures", [])) > 3 else "Не указано"
+    car_year = advert.get("mainFeatures", ["Не указано"])[0] if len(
+        advert.get("mainFeatures", [])) > 0 else "Не указан год"
+    car_engine_capacity = advert.get("mainFeatures", ["Не указано"])[2] if len(
+        advert.get("mainFeatures", [])) > 2 else "Не указана объем двигателя"
+
+    # Информация о продавце
+    seller = advert.get("seller", {})
+    seller_type = seller.get("type", "Не указан тип продавца")
+    seller_location = seller.get("location", {}).get("shortAddress", "Не указано местоположение")
+
+    # Дополнительная информация
+    is_accident_free = advert.get("no_accident", "Не указано")
+
+    photos = advert.get("images", {}).get("photos", [])
+    photo_links = [photo.get("url") for photo in photos]
+
+    # Указываем базовый путь, где будут сохраняться фотографии
+    base_folder = r"C:\Users\katya\Desktop\otomoto\car_photos"
+    photo_folder = sanitize_filename(link)
+
+    # Создаём пути для фотографий
+    photo_path = os.path.join(base_folder, photo_folder)
+
+    return {
+        "Data": data,
+        "Car Name": car_name,
+        "Car Year": int(car_year),
+        "Car Fuel Type": car_fuel_type,
+        "Car Mileage": int(car_mileage.replace(" ", "")),
+        "Car Engine Capacity": car_engine_capacity,
+        "Car Price": int(car_price),
+        "Seller Type": seller_type,
+        "Seller Location": seller_location,
+        "Car Link": link,
+        "Photo Folder": photo_path,
+        "Car Description": car_description,
+        "Photo Links": photo_links
+    }
+
+
 # Функция для извлечения информации о машинах
 def update_data(url):
+    data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Загружаем существующую таблицу, если она есть
+    if os.path.exists("cars_data.xlsx"):
+        try:
+            existing_df = pd.read_excel("cars_data.xlsx")
+            if "Car Link" in existing_df.columns:
+                existing_links = set(existing_df["Car Link"].dropna().str.strip())
+            else:
+                print("Колонка 'Car Link' отсутствует в файле.")
+                existing_df = pd.DataFrame()
+                existing_links = set()
+        except Exception as e:
+            print(f"Ошибка при чтении файла Excel: {e}")
+            existing_df = pd.DataFrame()
+            existing_links = set()
+    else:
+        existing_df = pd.DataFrame()
+        existing_links = set()
+
+    # Получаем HTML содержимое страницы
     html = fetch_html(url)
     if not html:
-        return  # Если не удалось загрузить страницу, выходим из функции
+        return
 
-    json_data = extract_json_from_html(html)
+    # Извлекаем ссылки на объявления
     links = extract_links(html)
+    new_car_data = []
 
-    # Сохраняем HTML в файл с правильной кодировкой
-    with open("file_url.html", "w", encoding="utf-8") as f:
-        f.write(html)
+    for link in links:
+        if link in existing_links:
+            print(f"Пропускаем объявление (уже есть в таблице): {link}")
+            continue
 
-    # Сохраняем JSON в текстовый файл
-    if json_data:
-        with open("file_json.html", "w", encoding="utf-8") as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)  # Форматируем JSON для читаемости
+        # Загружаем HTML содержимое объявления
+        html = fetch_html(link)
+        if not html:
+            continue
 
-    with open('car_links.txt', 'w', encoding='utf-8') as file:
-        for link in links:
-            file.write(link + '\n')
+        print(f"Обрабатываем новое объявление: {link}")
+        json_data = extract_json_from_script_tag(html)
+        if json_data:
+            car_info = extract_car_data(link, json_data, data)
+            new_car_data.append(car_info)
 
-    if json_data and "mainEntity" in json_data:
-        offers = json_data["mainEntity"].get("itemListElement", [])
-        car_data = []
-        for i, offer in enumerate(offers):
-            car = offer.get('itemOffered', {})
-            car_name = car.get('name', 'Не указано')
-            car_brand = car.get('brand', 'Не указано')
-            car_fuel_type = car.get('fuelType', 'Не указано')
-            car_mileage = car.get('mileageFromOdometer', {}).get('value', 'Не указано')
-            car_price = offer.get('priceSpecification', {}).get('price', 'Не указано')
-            car_link = links[i] if i < len(links) else 'Не указано'  # Привязываем ссылку к машине
+            folder_path = create_safe_folder_name(link)
+            download_images(car_info["Photo Links"], folder_path)
 
-            # Добавляем данные о машине в список
-            car_data.append({"Car Name": car_name, "Car Brand": car_brand, "Car Fuel Type": car_fuel_type, "Car Mileage": car_mileage, "Car Price": car_price, "Car Link": car_link})
+    # Объединяем новые данные с существующими
+    if new_car_data:
+        new_df = pd.DataFrame(new_car_data)
+        # Объединяем старые и новые данные
+        updated_df = pd.concat([existing_df, new_df], ignore_index=True)
 
-        # Преобразуем список в DataFrame
-        #df = pd.DataFrame(car_data, columns=["Название", "Бренд", "Тип топлива", "Пробег (км)", "Цена (PLN)", "Ссылка"])
+        # Определяем новый порядок колонок
+        new_column_order = [
+            'Data', 'Car Name', 'Car Year', 'Car Fuel Type', 'Car Mileage', 'Car Engine Capacity',
+            'Car Price', 'Seller Type', 'Seller Location', 'Car Link', 'Photo Folder', 'Car Description'
+        ]
 
-        # Сохраняем в Excel
-        #df.to_excel("cars_data_with_links.xlsx", index=False)
-        print("Данные успешно записаны в файл 'cars_data_with_links.xlsx'")
+        # Переставляем колонки в новый порядок
+        updated_df = updated_df[new_column_order]
 
-        desciption_list = []
-        for i, link in enumerate(links):
-            html = fetch_html(link)
-            if not html:
-                return  # Если не удалось загрузить страницу, выходим из функции
-
-            # Извлекаем JSON данные из тега <script id="__NEXT_DATA__">
-            json_data = extract_json_from_script_tag(html)
-
-            if json_data:
-                # Извлекаем описание (description)
-                description_html = json_data.get("props", {}).get("pageProps", {}).get("advert", {}).get("description")
-
-                car_data[i]["Car Description"] = (description_html)
-
-        print(*car_data, sep="\n")
-
+        # Сохраняем обновленный DataFrame обратно в исходный файл
+        updated_df.to_excel("cars_data.xlsx", index=False)
+        print("Таблица успешно обновлена!")
+    else:
+        print("Новых объявлений не найдено.")
 
 
 
 # Пример использования
-url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Border%5D=created_at%3Adesc'
+url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc'
 update_data(url)
+
+with open("logs.txt", "a", encoding="utf-8") as f:  # "a" для добавления, "w" для перезаписи
+    f.write(f'Задание было выполнено {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Добавляем перевод строки
+
