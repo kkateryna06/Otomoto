@@ -5,6 +5,8 @@ import pandas as pd
 import os
 import urllib.parse
 from datetime import datetime
+import time
+import schedule
 
 
 # Функция для загрузки HTML контента
@@ -224,11 +226,17 @@ def update_data(url):
         print("Новых объявлений не найдено.")
 
 
+def task():
+    url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc'
+    update_data(url)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" для добавления, "w" для перезаписи
+        f.write(f'Задание было выполнено {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Добавляем перевод строки
 
-# Пример использования
-url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc'
-update_data(url)
 
-with open("logs.txt", "a", encoding="utf-8") as f:  # "a" для добавления, "w" для перезаписи
-    f.write(f'Задание было выполнено {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Добавляем перевод строки
+# Планирование задачи
+schedule.every(4).hours.do(task)  # Запуск каждые 4 часа
 
+# Бесконечный цикл для выполнения задач
+while True:
+    schedule.run_pending()
+    time.sleep(1)  # Проверяем задачи каждую секунду
