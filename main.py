@@ -1,6 +1,9 @@
+from operator import index
+
 import requests
 from bs4 import BeautifulSoup
 import json
+from openpyxl import load_workbook
 import pandas as pd
 import os
 import urllib.parse
@@ -53,16 +56,22 @@ def extract_json_from_script_tag(html_content):
         return None
 
 
+from bs4 import BeautifulSoup
+
+
 # Функция для извлечения ссылок
 def extract_links(html_content):
+    # Парсим HTML
     soup = BeautifulSoup(html_content, 'html.parser')
-    links = []
 
-    # Ищем все теги <h1> с указанным классом
-    h1_tags = soup.find_all('h1', class_='epwfahw9 ooa-1ed90th er34gjf0')
-    for h1 in h1_tags:
-        a_tag = h1.find('a')  # Ищем тег <a> внутри <h1>
-        if a_tag and a_tag.get('href'):  # Проверяем наличие тега <a> и атрибута href
+    # Находим все теги <a> внутри тегов <p> с классом 'e2z61p70 ooa-1ed90th er34gjf0'
+    links = []
+    p_tags = soup.find_all('p', class_='e2z61p70 ooa-1ed90th er34gjf0')
+
+    for p in p_tags:
+        a_tag = p.find('a')  # Ищем тег <a> внутри <p>
+
+        if a_tag and a_tag.get('href'):  # Проверяем наличие href у <a>
             links.append(a_tag['href'])  # Добавляем ссылку в список
 
     return links
@@ -119,6 +128,12 @@ def extract_car_data(link, json_data, data):
     car_engine_capacity = advert.get("mainFeatures", ["Не указано"])[2] if len(
         advert.get("mainFeatures", [])) > 2 else "Не указана объем двигателя"
 
+    a = advert.get("details", ["Не указано"])
+
+    body_type = next((i["value"] for i in a if i["key"] == "body_type"), "No information")
+    gearbox = next((i["value"] for i in a if i["key"] == "gearbox"), "No information")
+    transmission = next((i["value"] for i in a if i["key"] == "transmission"), "No information")
+
     # Информация о продавце
     seller = advert.get("seller", {})
     seller_type = seller.get("type", "Не указан тип продавца")
@@ -138,13 +153,18 @@ def extract_car_data(link, json_data, data):
     photo_path = os.path.join(base_folder, photo_folder)
 
     return {
+        "Relevant": "yes",
         "Data": data,
+        "Sell Data": '',
         "Car Name": car_name,
         "Car Year": int(car_year),
         "Car Fuel Type": car_fuel_type,
         "Car Mileage": int(car_mileage.replace(" ", "")),
         "Car Engine Capacity": car_engine_capacity,
         "Car Price": int(car_price),
+        "Body Type": body_type,
+        "Gearbox": gearbox,
+        "Transmission": transmission,
         "Seller Type": seller_type,
         "Seller Location": seller_location,
         "Car Link": link,
@@ -152,6 +172,32 @@ def extract_car_data(link, json_data, data):
         "Car Description": car_description,
         "Photo Links": photo_links
     }
+
+
+def update_excel_with_styles(existing_file, updated_df):
+    """
+    Обновляет файл Excel с сохранением форматов.
+    """
+    try:
+        # Загружаем существующий файл Excel
+        workbook = load_workbook(existing_file)
+        sheet_name = workbook.sheetnames[0]  # Название листа (по умолчанию первый)
+        sheet = workbook[sheet_name]
+
+        # Очищаем данные, но сохраняем стили
+        for row in sheet.iter_rows(min_row=2):  # Начинаем с 2 строки (первая — заголовки)
+            for cell in row:
+                cell.value = None  # Удаляем данные, но стили остаются
+
+        # Записываем обновленные данные
+        for i, row in updated_df.iterrows():
+            for j, value in enumerate(row):
+                sheet.cell(row=i + 2, column=j + 1, value=value)
+
+        # Сохраняем файл
+        workbook.save(existing_file)
+    except Exception as e:
+        print(f"Ошибка при обновлении файла Excel: {e}")
 
 
 # Функция для извлечения информации о машинах
@@ -184,11 +230,14 @@ def update_data(url):
     # Извлекаем ссылки на объявления
     links = extract_links(html)
     new_car_data = []
+    count = 0
 
     for link in links:
         if link in existing_links:
             print(f"Пропускаем объявление (уже есть в таблице): {link}")
             continue
+
+        count+= 1
 
         # Загружаем HTML содержимое объявления
         html = fetch_html(link)
@@ -212,16 +261,23 @@ def update_data(url):
 
         # Определяем новый порядок колонок
         new_column_order = [
-            'Data', 'Car Name', 'Car Year', 'Car Fuel Type', 'Car Mileage', 'Car Engine Capacity',
-            'Car Price', 'Seller Type', 'Seller Location', 'Car Link', 'Photo Folder', 'Car Description'
+            'Relevant', 'Data', 'Sell Data','Car Name', 'Car Year', 'Car Fuel Type', 'Car Mileage', 'Car Engine Capacity', 'Car Price',
+            'Body Type', 'Gearbox', 'Transmission', 'Seller Type', 'Seller Location', 'Car Link', 'Photo Folder', 'Car Description'
         ]
 
-        # Переставляем колонки в новый порядок
-        updated_df = updated_df[new_column_order]
+        # Сохраняем обновленные данные
+        if new_car_data:
+            new_df = pd.DataFrame(new_car_data)
+            updated_df = pd.concat([existing_df, new_df], ignore_index=True)
+            updated_df = updated_df[new_column_order]
 
-        # Сохраняем обновленный DataFrame обратно в исходный файл
-        updated_df.to_excel("cars_data.xlsx", index=False)
-        print("Таблица успешно обновлена!")
+            # Вместо pandas.to_excel используем openpyxl для сохранения стилей
+            if os.path.exists("cars_data.xlsx"):
+                update_excel_with_styles("cars_data.xlsx", updated_df)
+            else:
+                updated_df.to_excel("cars_data.xlsx", index=False)  # Если файла нет, создаём его
+        print(f"Таблица успешно обновлена! {count} новых объявлений")
+
     else:
         print("Новых объявлений не найдено.")
 
@@ -233,10 +289,14 @@ def task():
         f.write(f'Задание было выполнено {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Добавляем перевод строки
 
 
-# Планирование задачи
-schedule.every(4).hours.do(task)  # Запуск каждые 4 часа
+# # Планирование задачи
+# schedule.every(10).hours.do(task)  # Запуск каждые 10 часов
+#
+# # Бесконечный цикл для выполнения задач
+# while True:
+#     schedule.run_pending()
+#     time.sleep(1)  # Проверяем задачи каждую секунду
 
-# Бесконечный цикл для выполнения задач
-while True:
-    schedule.run_pending()
-    time.sleep(1)  # Проверяем задачи каждую секунду
+task()
+
+#https://www.otomoto.pl/osobowe/oferta/mitsubishi-lancer-osoba-prywatna-auto-po-konserwacji-podwozia-ID6GPKYX.html
