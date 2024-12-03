@@ -1,32 +1,28 @@
-from operator import index
-
 import requests
-from bs4 import BeautifulSoup
 import json
 from openpyxl import load_workbook
 import pandas as pd
 import os
 import urllib.parse
 from datetime import datetime
-import time
-import schedule
+from bs4 import BeautifulSoup
 
 
-# Функция для загрузки HTML контента
+# Function for loading HTML content
 def fetch_html(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
     }
     try:
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Проверка на успешный ответ
+        response.raise_for_status()  # Check for a successful response
         return response.text
     except requests.exceptions.HTTPError as e:
-        print(f"Ошибка при запросе URL: {url} - {e}")
-        return None  # Возвращаем None в случае ошибки
+        print(f"Error requesting URL: {url} - {e}")
+        return None  # Return None in case of error
 
 
-# Функция для извлечения JSON данных из первого найденного script
+# Function to extract JSON data from the first found script
 def extract_json_from_html(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     script = soup.find('script', {'type': 'application/ld+json'})
@@ -38,118 +34,114 @@ def extract_json_from_html(html_content):
     return None
 
 
-# Функция для извлечения JSON данных из тега <script id="__NEXT_DATA__">
+# Function to extract JSON data from <script id="__NEXT_DATA__"> tag
 def extract_json_from_script_tag(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Находим нужный тег <script id="__NEXT_DATA__" type="application/json">
+    # Find the required tag <script id="__NEXT_DATA__" type="application/json">
     script_tag = soup.find('script', {'id': '__NEXT_DATA__', 'type': 'application/json'})
 
     if script_tag:
         try:
-            return json.loads(script_tag.string)  # Преобразуем содержимое тега в JSON
+            return json.loads(script_tag.string)  # Convert the tag content to JSON
         except json.JSONDecodeError:
-            print("Ошибка при разборе JSON")
+            print("Error parsing JSON")
             return None
     else:
-        print("Тег с нужными данными не найден")
+        print("Tag with required data not found")
         return None
 
 
-from bs4 import BeautifulSoup
-
-
-# Функция для извлечения ссылок
+# Function to extract links
 def extract_links(html_content):
-    # Парсим HTML
+    # Parsing HTML
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Находим все теги <a> внутри тегов <p> с классом 'e2z61p70 ooa-1ed90th er34gjf0'
+    # Find all <a> tags inside <p> tags with class 'e2z61p70 ooa-1ed90th er34gjf0'
     links = []
     p_tags = soup.find_all('p', class_='e2z61p70 ooa-1ed90th er34gjf0')
 
     for p in p_tags:
-        a_tag = p.find('a')  # Ищем тег <a> внутри <p>
+        a_tag = p.find('a')  # Search for <a> tag inside <p>
 
-        if a_tag and a_tag.get('href'):  # Проверяем наличие href у <a>
-            links.append(a_tag['href'])  # Добавляем ссылку в список
+        if a_tag and a_tag.get('href'):  # Check if <a> has href
+            links.append(a_tag['href'])  # Add a link to the list
 
     return links
 
 
-# Функция для преобразования URL в безопасное имя файла
+# Function to convert URL to safe file name
 def sanitize_filename(url):
-    # Преобразуем URL в строку, которая безопасна для файловой системы
+    # Convert the URL to a filesystem-safe string
     return urllib.parse.quote(url, safe='')
 
 
-# Функция для создания безопасного имени папки
+# Function to create a safe folder name
 def create_safe_folder_name(url):
     folder_name = sanitize_filename(url)
     folder_path = os.path.join("car_photos", folder_name)
-    os.makedirs(folder_path, exist_ok=True)  # Создаем папку, если ее нет
+    os.makedirs(folder_path, exist_ok=True)  # Create a folder if it doesn't exist
     return folder_path
 
 
-# Функция для загрузки фотографий в указанную папку
+# Function to upload photos to a specified folder
 def download_images(photo_links, folder_path):
     for j, photo_url in enumerate(photo_links):
         try:
             response = requests.get(photo_url, stream=True)
-            status = response.raise_for_status()
             photo_path = os.path.join(folder_path, f"photo_{j + 1}.jpg")
             with open(photo_path, "wb") as photo_file:
                 photo_file.write(response.content)
         except Exception as e:
-            print(f"Ошибка при загрузке фото {photo_url}: {e}")
+            print(f"Error uploading photo {photo_url}: {e}")
 
 
-# Функция для очистки описания от HTML тегов
+# Function to clear description from HTML tags
 def clean_html_description(description_html):
-    # Используем BeautifulSoup для очистки HTML
+    # Using BeautifulSoup to Clean HTML
     soup = BeautifulSoup(description_html, "html.parser")
-    return soup.get_text(separator=" ").strip()  # Возвращаем только текст, разделенный пробелами
+    return soup.get_text(separator=" ").strip()  # Return only text separated by spaces
 
 
-# Функция для извлечения данных о машине
+# Function to retrieve data about the car
 def extract_car_data(link, json_data, data):
     advert = json_data.get("props", {}).get("pageProps", {}).get("advert", {})
-    # Основная информация о машине
-    car_name = advert.get("title", "Не указано")
-    car_price = advert.get("price", {}).get("value", "Не указано")
-    car_description = clean_html_description(advert.get("description", "Описание отсутствует"))
-    car_mileage = advert.get("mainFeatures", ["Не указано"])[1] if len(
-        advert.get("mainFeatures", [])) > 1 else "Не указано"
+    # Basic information about the car
+    car_name = advert.get("title", "Not specified")
+    car_price = advert.get("price", {}).get("value", "Not specified")
+    car_description = clean_html_description(advert.get("description", "Description is missing"))
+    car_mileage = advert.get("mainFeatures", ["Not specified"])[1] if len(
+        advert.get("mainFeatures", [])) > 1 else "Not specified"
     car_mileage = car_mileage[:len(car_mileage) - 3]
-    car_fuel_type = advert.get("mainFeatures", ["Не указано"])[3] if len(
-        advert.get("mainFeatures", [])) > 3 else "Не указано"
-    car_year = advert.get("mainFeatures", ["Не указано"])[0] if len(
-        advert.get("mainFeatures", [])) > 0 else "Не указан год"
-    car_engine_capacity = advert.get("mainFeatures", ["Не указано"])[2] if len(
-        advert.get("mainFeatures", [])) > 2 else "Не указана объем двигателя"
+    car_fuel_type = advert.get("mainFeatures", ["Not specified"])[3] if len(
+        advert.get("mainFeatures", [])) > 3 else "Not specified"
+    car_year = advert.get("mainFeatures", ["Not specified"])[0] if len(
+        advert.get("mainFeatures", [])) > 0 else "Year not specified"
+    car_engine_capacity = advert.get("mainFeatures", ["Not specified"])[2] if len(
+        advert.get("mainFeatures", [])) > 2 else "Not specified"
 
-    a = advert.get("details", ["Не указано"])
+    a = advert.get("details", ["Not specified"])
 
-    body_type = next((i["value"] for i in a if i["key"] == "body_type"), "No information")
-    gearbox = next((i["value"] for i in a if i["key"] == "gearbox"), "No information")
-    transmission = next((i["value"] for i in a if i["key"] == "transmission"), "No information")
+    body_type = next((i["value"] for i in a if i["key"] == "body_type"), "Not specified")
+    gearbox = next((i["value"] for i in a if i["key"] == "gearbox"), "Not specified")
+    transmission = next((i["value"] for i in a if i["key"] == "transmission"), "Not specified")
 
-    # Информация о продавце
+    # Seller information
     seller = advert.get("seller", {})
     seller_type = seller.get("type", "Не указан тип продавца")
     seller_location = seller.get("location", {}).get("shortAddress", "Не указано местоположение")
 
-    # Дополнительная информация
+    # Additional information
     is_accident_free = advert.get("no_accident", "Не указано")
 
     photos = advert.get("images", {}).get("photos", [])
     photo_links = [photo.get("url") for photo in photos]
 
-    # Указываем базовый путь, где будут сохраняться фотографии
+    # Specify the base path where the photos will be saved
     base_folder = r"C:\Users\katya\Desktop\otomoto\car_photos"
     photo_folder = sanitize_filename(link)
 
-    # Создаём пути для фотографий
+    # Create paths for photos
     photo_path = os.path.join(base_folder, photo_folder)
 
     return {
@@ -174,77 +166,75 @@ def extract_car_data(link, json_data, data):
     }
 
 
+# The function updates the Excel file while preserving the formats.
 def update_excel_with_styles(existing_file, updated_df):
-    """
-    Обновляет файл Excel с сохранением форматов.
-    """
     try:
-        # Загружаем существующий файл Excel
+        # Load an existing Excel file
         workbook = load_workbook(existing_file)
-        sheet_name = workbook.sheetnames[0]  # Название листа (по умолчанию первый)
+        sheet_name = workbook.sheetnames[0]  # Sheet name (default first)
         sheet = workbook[sheet_name]
 
-        # Очищаем данные, но сохраняем стили
-        for row in sheet.iter_rows(min_row=2):  # Начинаем с 2 строки (первая — заголовки)
+        # Clear data but keep styles
+        for row in sheet.iter_rows(min_row=2):  # Start with line 2 (the first one is the headings)
             for cell in row:
-                cell.value = None  # Удаляем данные, но стили остаются
+                cell.value = None  # Delete data, but styles remain
 
-        # Записываем обновленные данные
+        # Write updated data
         for i, row in updated_df.iterrows():
             for j, value in enumerate(row):
                 sheet.cell(row=i + 2, column=j + 1, value=value)
 
-        # Сохраняем файл
+        # Save the file
         workbook.save(existing_file)
     except Exception as e:
-        print(f"Ошибка при обновлении файла Excel: {e}")
+        print(f"Error updating excel file: {e}")
 
 
-# Функция для извлечения информации о машинах
+# Function to retrieve information about machines
 def update_data(url):
     data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Загружаем существующую таблицу, если она есть
+    # Load an existing table if it exists
     if os.path.exists("cars_data.xlsx"):
         try:
             existing_df = pd.read_excel("cars_data.xlsx")
             if "Car Link" in existing_df.columns:
                 existing_links = set(existing_df["Car Link"].dropna().str.strip())
             else:
-                print("Колонка 'Car Link' отсутствует в файле.")
+                print("The 'Car Link' column is missing from the file.")
                 existing_df = pd.DataFrame()
                 existing_links = set()
         except Exception as e:
-            print(f"Ошибка при чтении файла Excel: {e}")
+            print(f"Error reading Excel file: {e}")
             existing_df = pd.DataFrame()
             existing_links = set()
     else:
         existing_df = pd.DataFrame()
         existing_links = set()
 
-    # Получаем HTML содержимое страницы
+    # Get the HTML content of the page
     html = fetch_html(url)
     if not html:
         return
 
-    # Извлекаем ссылки на объявления
+    # Extract links to ads
     links = extract_links(html)
     new_car_data = []
     count = 0
 
     for link in links:
         if link in existing_links:
-            print(f"Пропускаем объявление (уже есть в таблице): {link}")
+            print(f"Skip the ad (already in the table): {link}")
             continue
 
         count+= 1
 
-        # Загружаем HTML содержимое объявления
+        # Load the HTML content of the ad
         html = fetch_html(link)
         if not html:
             continue
 
-        print(f"Обрабатываем новое объявление: {link}")
+        print(f"Processing a new ad: {link}")
         json_data = extract_json_from_script_tag(html)
         if json_data:
             car_info = extract_car_data(link, json_data, data)
@@ -253,50 +243,42 @@ def update_data(url):
             folder_path = create_safe_folder_name(link)
             download_images(car_info["Photo Links"], folder_path)
 
-    # Объединяем новые данные с существующими
-    if new_car_data:
-        new_df = pd.DataFrame(new_car_data)
-        # Объединяем старые и новые данные
-        updated_df = pd.concat([existing_df, new_df], ignore_index=True)
-
-        # Определяем новый порядок колонок
+        # Define a new column order
         new_column_order = [
             'Relevant', 'Data', 'Sell Data','Car Name', 'Car Year', 'Car Fuel Type', 'Car Mileage', 'Car Engine Capacity', 'Car Price',
             'Body Type', 'Gearbox', 'Transmission', 'Seller Type', 'Seller Location', 'Car Link', 'Photo Folder', 'Car Description'
         ]
 
-        # Сохраняем обновленные данные
+        # Save updated data
         if new_car_data:
             new_df = pd.DataFrame(new_car_data)
             updated_df = pd.concat([existing_df, new_df], ignore_index=True)
             updated_df = updated_df[new_column_order]
 
-            # Вместо pandas.to_excel используем openpyxl для сохранения стилей
+            # Instead of pandas.to_excel we use openpyxl to save styles
             if os.path.exists("cars_data.xlsx"):
                 update_excel_with_styles("cars_data.xlsx", updated_df)
             else:
-                updated_df.to_excel("cars_data.xlsx", index=False)  # Если файла нет, создаём его
-        print(f"Таблица успешно обновлена! {count} новых объявлений")
+                updated_df.to_excel("cars_data.xlsx", index=False)  # If the file does not exist, create it
+        print(f"Table successfully updated! {count} new ads")
 
     else:
-        print("Новых объявлений не найдено.")
+        print("No new ads found.")
 
 
 def task():
     url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc'
     update_data(url)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" для добавления, "w" для перезаписи
-        f.write(f'Задание было выполнено {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Добавляем перевод строки
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'The task was completed {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
 
-# # Планирование задачи
-# schedule.every(10).hours.do(task)  # Запуск каждые 10 часов
+# # Task planning
+# schedule.every(10).hours.do(task)  # Launch every 10 hours
 #
-# # Бесконечный цикл для выполнения задач
+# # Infinite loop for executing tasks
 # while True:
 #     schedule.run_pending()
-#     time.sleep(1)  # Проверяем задачи каждую секунду
+#     time.sleep(1)  # Check tasks every second
 
 task()
-
-#https://www.otomoto.pl/osobowe/oferta/mitsubishi-lancer-osoba-prywatna-auto-po-konserwacji-podwozia-ID6GPKYX.html
