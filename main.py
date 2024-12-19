@@ -7,6 +7,8 @@ import urllib.parse
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+from database_update import update_database
+
 
 # Function for loading HTML content
 def fetch_html(url):
@@ -76,7 +78,6 @@ def sanitize_filename(url):
     return urllib.parse.quote(url, safe='')
 
 
-# Function to create a safe folder name
 def create_safe_folder_name(url):
     folder_name = sanitize_filename(url)
     folder_path = os.path.join("car_photos", folder_name)
@@ -104,66 +105,89 @@ def clean_html_description(description_html):
 
 
 # Function to retrieve data about the car
-def extract_car_data(link, json_data, data):
+def extract_car_data(link, json_data):
     advert = json_data.get("props", {}).get("pageProps", {}).get("advert", {})
-    # Basic information about the car
-    car_name = advert.get("title", "Not specified")
-    car_price = advert.get("price", {}).get("value", "Not specified")
-    car_description = clean_html_description(advert.get("description", "Description is missing"))
-    car_mileage = advert.get("mainFeatures", ["Not specified"])[1] if len(
-        advert.get("mainFeatures", [])) > 1 else "Not specified"
-    car_mileage = car_mileage[:len(car_mileage) - 3]
-    car_fuel_type = advert.get("mainFeatures", ["Not specified"])[3] if len(
-        advert.get("mainFeatures", [])) > 3 else "Not specified"
-    car_year = advert.get("mainFeatures", ["Not specified"])[0] if len(
-        advert.get("mainFeatures", [])) > 0 else "Year not specified"
-    car_engine_capacity = advert.get("mainFeatures", ["Not specified"])[2] if len(
-        advert.get("mainFeatures", [])) > 2 else "Not specified"
 
-    a = advert.get("details", ["Not specified"])
+    # BASIC INFORMATION
+    details = advert.get("details", {})
 
-    body_type = next((i["value"] for i in a if i["key"] == "body_type"), "Not specified")
-    gearbox = next((i["value"] for i in a if i["key"] == "gearbox"), "Not specified")
-    transmission = next((i["value"] for i in a if i["key"] == "transmission"), "Not specified")
+    mark = next((i["value"] for i in details if i["key"] == "make"), None)
+    model = next((i["value"] for i in details if i["key"] == "model"), None)
+    version = next((i["value"] for i in details if i["key"] == "version"), None)
+    color = next((i["value"] for i in details if i["key"] == "color"), None)
+    door_count = next((i["value"] for i in details if i["key"] == "door_count"), None)
+    nr_seats = next((i["value"] for i in details if i["key"] == "nr_seats"), None)
+    year = next(((i["value"] for i in details if i["key"] == "year")), None)
+    generation = next((i["value"] for i in details if i["key"] == "generation"), None)
 
-    # Seller information
+    # TECHNICAL SPECS
+    fuel_type = next((i["value"] for i in details if i["key"] == "fuel_type"), None)
+    engine_capacity = next((i["value"] for i in details if i["key"] == "engine_capacity"), None)
+    engine_capacity = engine_capacity[:-4].replace(" ", "")
+    engine_power = next((i["value"] for i in details if i["key"] == "engine_power"), None)
+    engine_power = engine_power[:-3]
+    body_type = next((i["value"] for i in details if i["key"] == "body_type"), None)
+    gearbox = next((i["value"] for i in details if i["key"] == "gearbox"), None)
+    transmission = next((i["value"] for i in details if i["key"] == "transmission"), None)
+    urban_consumption = next((i["value"] for i in details if i["key"] == "urban_consumption"), None)
+    extra_urban_consumption = next((i["value"] for i in details if i["key"] == "extra_urban_consumption"),
+                                   None)
+    mileage = next((i["value"] for i in details if i["key"] == "mileage"), None)
+    mileage = mileage[:-3].replace(" ", "")
+
+    # CONDITION HISTORY
+    has_registration = next((i["value"] for i in details if i["key"] == "has_registration"), None)
+    has_registration = True if has_registration == "Tak" else False
+
+    # EQUIPMENT
+    equipment = advert.get("equipment", {})
+    equipment = json.dumps(equipment)
+
+    # PARAMETRS
+    parameters_dict = advert.get("parametersDict", {})
+    parameters_dict = json.dumps(parameters_dict)
+
+    # ADVERT INFO
+    price = advert.get("price", {}).get("value", None)
+    date = advert.get("createdAt", None)
+    id = advert.get("id")
+    description = clean_html_description(advert.get("description", None))
+
     seller = advert.get("seller", {})
-    seller_type = seller.get("type", "Не указан тип продавца")
-    seller_location = seller.get("location", {}).get("shortAddress", "Не указано местоположение")
+    seller_type = seller.get("type", None)
 
-    # Additional information
-    is_accident_free = advert.get("no_accident", "Не указано")
+    # LOCATION
+    location = advert.get("seller", {}).get("location", {}).get("map", {})
+    location = json.dumps(location)
 
+    # PATH
+    base_folder_photo = r"C:\Users\katya\Desktop\otomoto\car_photos"
+    photo_folder = urllib.parse.quote(link, safe='')
+    photo_path = os.path.join(base_folder_photo, photo_folder)
+
+    base_folder_html = r"C:\Users\katya\Desktop\otomoto\car_htmls"
+    html_folder = urllib.parse.quote(link, safe='')
+    html_path = os.path.join(base_folder_html, html_folder)
+
+    #Download photos
     photos = advert.get("images", {}).get("photos", [])
     photo_links = [photo.get("url") for photo in photos]
+    folder_path = create_safe_folder_name(link)
+    download_images(photo_links, folder_path)
 
-    # Specify the base path where the photos will be saved
-    base_folder = r"C:\Users\katya\Desktop\otomoto\car_photos"
-    photo_folder = sanitize_filename(link)
-
-    # Create paths for photos
-    photo_path = os.path.join(base_folder, photo_folder)
-
-    return {
-        "Relevant": "yes",
-        "Data": data,
-        "Sell Data": '',
-        "Car Name": car_name,
-        "Car Year": int(car_year),
-        "Car Fuel Type": car_fuel_type,
-        "Car Mileage": int(car_mileage.replace(" ", "")),
-        "Car Engine Capacity": car_engine_capacity,
-        "Car Price": int(car_price),
-        "Body Type": body_type,
-        "Gearbox": gearbox,
-        "Transmission": transmission,
-        "Seller Type": seller_type,
-        "Seller Location": seller_location,
-        "Car Link": link,
-        "Photo Folder": photo_path,
-        "Car Description": car_description,
-        "Photo Links": photo_links
+    dict_result = {
+        "mark": mark, "model": model, "version": version, "color": color,
+        "door_count": door_count, "nr_seats": nr_seats, "year": year, "generation": generation,
+        "fuel_type": fuel_type, "engine_capacity": engine_capacity, "engine_power": engine_power,
+        "body_type": body_type, "gearbox": gearbox,
+        "transmission": transmission, "urban_consumption": urban_consumption,
+        "extra_urban_consumption": extra_urban_consumption, "mileage": mileage,
+        "has_registration": has_registration, "equipment": equipment,
+        "parameters_dict": parameters_dict, "price": price, "date": date, "description": description,
+        "link": link, "car_id": id, "location": location, "photo_path": photo_path,
+        "html_path": html_path, "seller_type": seller_type
     }
+    return dict_result
 
 
 # The function updates the Excel file while preserving the formats.
@@ -192,16 +216,14 @@ def update_excel_with_styles(existing_file, updated_df):
 
 # Function to retrieve information about machines
 def update_data(url):
-    data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     # Load an existing table if it exists
     if os.path.exists("cars_data.xlsx"):
         try:
             existing_df = pd.read_excel("cars_data.xlsx")
-            if "Car Link" in existing_df.columns:
-                existing_links = set(existing_df["Car Link"].dropna().str.strip())
+            if "link" in existing_df.columns:
+                existing_links = set(existing_df["link"].dropna().str.strip())
             else:
-                print("The 'Car Link' column is missing from the file.")
+                print("The 'link' column is missing from the file.")
                 existing_df = pd.DataFrame()
                 existing_links = set()
         except Exception as e:
@@ -234,32 +256,46 @@ def update_data(url):
         if not html:
             continue
 
+
+        html_filename = sanitize_filename(link) + ".html"
+        html_path = os.path.join('car_htmls', html_filename)
+
+        os.makedirs('car_htmls', exist_ok=True)
+
+        with open(html_path, "w", encoding="utf-8") as file:
+            file.write(html)
+
         print(f"Processing a new ad: {link}")
         json_data = extract_json_from_script_tag(html)
         if json_data:
-            car_info = extract_car_data(link, json_data, data)
-            new_car_data.append(car_info)
+            # Define a new column order
+            new_column_order = [
+                'relevant', 'date', 'sell_date', 'mark', 'model', 'version', 'year', 'fuel_type', 'mileage',
+                'engine_capacity', 'price', 'body_type', 'gearbox', 'transmission',
+                'seller_type', 'location', 'link', 'photo_path', 'html_path', 'description'
+            ]
 
-            folder_path = create_safe_folder_name(link)
-            download_images(car_info["Photo Links"], folder_path)
+            car_info = extract_car_data(link, json_data)
+            update_database(car_info, "car_info")
+            filtered_dict = {key: car_info[key] for key in car_info if key in new_column_order}
+            filtered_dict["year"] = int(filtered_dict["year"])
+            filtered_dict["price"] = int(filtered_dict["price"])
+            filtered_dict["mileage"] = int(filtered_dict["mileage"])
+            filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
+            filtered_dict["relevant"] = "yes"
+            new_car_data.append(filtered_dict)
 
-        # Define a new column order
-        new_column_order = [
-            'Relevant', 'Data', 'Sell Data','Car Name', 'Car Year', 'Car Fuel Type', 'Car Mileage', 'Car Engine Capacity', 'Car Price',
-            'Body Type', 'Gearbox', 'Transmission', 'Seller Type', 'Seller Location', 'Car Link', 'Photo Folder', 'Car Description'
-        ]
+    # Save updated date
+    if new_car_data:
+        new_df = pd.DataFrame(new_car_data)
+        updated_df = pd.concat([existing_df, new_df], ignore_index=True)
+        updated_df = updated_df[new_column_order]
 
-        # Save updated data
-        if new_car_data:
-            new_df = pd.DataFrame(new_car_data)
-            updated_df = pd.concat([existing_df, new_df], ignore_index=True)
-            updated_df = updated_df[new_column_order]
-
-            # Instead of pandas.to_excel we use openpyxl to save styles
-            if os.path.exists("cars_data.xlsx"):
-                update_excel_with_styles("cars_data.xlsx", updated_df)
-            else:
-                updated_df.to_excel("cars_data.xlsx", index=False)  # If the file does not exist, create it
+        # Instead of pandas.to_excel we use openpyxl to save styles
+        if os.path.exists("cars_data.xlsx"):
+            update_excel_with_styles("cars_data.xlsx", updated_df)
+        else:
+            updated_df.to_excel("cars_data.xlsx", index=False)  # If the file does not exist, create it
         print(f"Table successfully updated! {count} new ads")
 
     else:
