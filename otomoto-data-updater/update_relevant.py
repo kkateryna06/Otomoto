@@ -23,10 +23,10 @@ def fetch_html(url):
 
 
 # Function to update the "Relevant" column
-def update_relevant_column_with_openpyxl(file_path, date):
+def update_relevant_column_with_openpyxl(excel_table, date):
     try:
         # Load an existing file
-        workbook = load_workbook(file_path)
+        workbook = load_workbook(excel_table)
         sheet = workbook.active  # Default Worksheet
 
         # Find the indexes of the columns "Car Link" and "Relevant"
@@ -49,25 +49,20 @@ def update_relevant_column_with_openpyxl(file_path, date):
                     sell_date = datetime.now().strftime(date)
                     sheet.cell(row=row, column=sell_date_idx).value = sell_date
 
-                    update_database([car_link, False, date], "car_relevant")
+                    update_database([car_link, date], "car_relevant", excel_table[:len(excel_table)-5])
 
         # Save the file
-        workbook.save(file_path)
+        workbook.save(excel_table)
         print("The file has been successfully updated with formatting preserved!")
     except Exception as e:
         print(f"Error updating Excel file: {e}")
 
 
-def task():
-    file_path = "cars_data.xlsx"
+def task_relevant(excel_table):
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if os.path.exists(file_path):
-        update_relevant_column_with_openpyxl(file_path, date)
+    if os.path.exists(excel_table):
+        update_relevant_column_with_openpyxl(excel_table, date)
         with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-            f.write(f'Relevant info was updated {date}\n')  # Log
+            f.write(f'Relevant info in {excel_table} was updated {date}\n')  # Log
     else:
         print("File cars_data.xlsx not found.")
-
-
-# Starting the task
-task()
