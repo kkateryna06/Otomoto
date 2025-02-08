@@ -42,6 +42,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            pickFirsts.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/io.netty.versions.properties")
+            excludes.add("META-INF/INDEX.LIST")
+        }
+    }
 }
 
 dependencies {
@@ -56,6 +64,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.runtime.livedata)
+    implementation(libs.firebase.appdistribution.gradle)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -67,4 +76,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.3")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("com.google.code.gson:gson:2.10.1")
 }

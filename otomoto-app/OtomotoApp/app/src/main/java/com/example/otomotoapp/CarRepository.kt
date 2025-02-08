@@ -1,36 +1,31 @@
 package com.example.otomotoapp
 
-import android.util.Log
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import java.math.BigInteger
 
 class CarRepository {
 
-    interface CarSpecsCallback {
-        fun onSuccess(cars: List<CarSpecs>)
-        fun onError(error: String)
+    suspend fun getCars(isSpecialCarsEnabled: Boolean): List<CarSpecs> {
+        return try {
+            if (isSpecialCarsEnabled) {
+            RetrofitClient.instance.getSpecialCars()
+        } else {
+            RetrofitClient.instance.getAllCars()
+        }
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch car specs: ${e.message}")
+        }
     }
 
-    fun getCarSpecs(callback: CarSpecsCallback) {
-        RetrofitClient.instance.getCarSpecs().enqueue(object : Callback<List<CarSpecs>> {
-            override fun onResponse(call: Call<List<CarSpecs>>, response: Response<List<CarSpecs>>) {
-                if (response.isSuccessful) {
-                    val cars = response.body()
-                    if (cars != null) {
-                        callback.onSuccess(cars)
-                    } else {
-                        callback.onError("Empty response body")
-                    }
-                } else {
-                    callback.onError("Error: ${response.code()} - ${response.message()}")
-                }
+    suspend fun getCarById(carId: String, isSpecialCarsEnabled: Boolean): CarSpecs {
+        return try {
+            if (isSpecialCarsEnabled) {
+                RetrofitClient.instance.getCarByIdFromSpecial(carId)
+            } else {
+                RetrofitClient.instance.getCarByIdFromAll(carId)
             }
-
-            override fun onFailure(call: Call<List<CarSpecs>>, t: Throwable) {
-                callback.onError(t.message ?: "Unknown error")
-            }
-        })
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch car specs: ${e.message}")
+        }
     }
 }
 

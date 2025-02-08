@@ -3,30 +3,55 @@ package com.example.otomotoapp
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import java.math.BigInteger
 
 class MainViewModel: ViewModel() {
 
     private val repository = CarRepository()
 
-    // LiveData для списка машин
+    // LiveData for car list
     private val _carList = MutableLiveData<List<CarSpecs>>()
     val carList: LiveData<List<CarSpecs>> = _carList
 
-    // LiveData для сообщений об ошибке
+    // Live Data for special car switch
+    private val _isSpecialCarEnabled = MutableLiveData<Boolean>(false)
+    val isSpecialCarEnabled: LiveData<Boolean> = _isSpecialCarEnabled
+
+    fun toggleSpecialCarSwitch(isEnabled: Boolean) {
+        _isSpecialCarEnabled.value = isEnabled
+        fetchCars() // Re-fetch data when the toggle changes
+    }
+
+    // LiveData for error messages
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
-    // Метод для получения данных
-    fun getCarSpecs() {
-        repository.getCarSpecs(object : CarRepository.CarSpecsCallback {
-            override fun onSuccess(cars: List<CarSpecs>) {
-                _carList.value = cars // Обновляем список машин
-                _errorMessage.value = null // Сбрасываем ошибку, если данные получены
+    fun fetchCars() {
+        viewModelScope.launch {
+            try {
+                val cars = repository.getCars(_isSpecialCarEnabled.value ?: false)
+                _carList.value = cars
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Error fetching cars: ${e.message}"
             }
+        }
+    }
 
-            override fun onError(error: String) {
-                _errorMessage.value = error // Устанавливаем сообщение об ошибке
+    fun getCarById(carId: String): LiveData<CarSpecs?> {
+        val carSpecsLiveData = MutableLiveData<CarSpecs?>()
+
+        viewModelScope.launch {
+            try {
+                val carSpecs = repository.getCarById(carId, _isSpecialCarEnabled.value ?: false)
+                 carSpecsLiveData.value = carSpecs
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Error fetching car specs: ${e.message}"
             }
-        })
+        }
+        return carSpecsLiveData
     }
 }
