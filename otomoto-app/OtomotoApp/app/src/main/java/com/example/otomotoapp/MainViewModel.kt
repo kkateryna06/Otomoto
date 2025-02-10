@@ -7,17 +7,17 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import java.math.BigInteger
 
-class MainViewModel: ViewModel() {
+open class MainViewModel: ViewModel() {
 
     private val repository = CarRepository()
 
     // LiveData for car list
     private val _carList = MutableLiveData<List<CarSpecs>>()
-    val carList: LiveData<List<CarSpecs>> = _carList
+    open val carList: LiveData<List<CarSpecs>> = _carList
 
     // Live Data for special car switch
     private val _isSpecialCarEnabled = MutableLiveData<Boolean>(false)
-    val isSpecialCarEnabled: LiveData<Boolean> = _isSpecialCarEnabled
+    open val isSpecialCarEnabled: LiveData<Boolean> = _isSpecialCarEnabled
 
     fun toggleSpecialCarSwitch(isEnabled: Boolean) {
         _isSpecialCarEnabled.value = isEnabled
@@ -26,7 +26,7 @@ class MainViewModel: ViewModel() {
 
     // LiveData for error messages
     private val _errorMessage = MutableLiveData<String?>()
-    val errorMessage: LiveData<String?> = _errorMessage
+    open val errorMessage: LiveData<String?> = _errorMessage
 
     fun fetchCars() {
         viewModelScope.launch {

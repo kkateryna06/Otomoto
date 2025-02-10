@@ -3,15 +3,16 @@ package com.example.otomotoapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import com.example.compose.AppTheme
 
 class MainActivity : ComponentActivity() {
-    private val carViewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Navigation()
+            AppTheme(dynamicColor = false) {
+                Navigation()
+            }
         }
     }
 }
