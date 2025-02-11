@@ -1,8 +1,5 @@
 package com.example.otomotoapp
 
-import org.json.JSONObject
-import java.math.BigInteger
-
 data class CarSpecs(
     val car_id: String,
     val date: String,

@@ -18,15 +18,19 @@ fun Navigation() {
             OtomotoMainScreen(navController = navController, viewModel = viewModel)
         }
         composable(
-            route = Screen.CarDetailsScreen.route + "/{car_id}",
+            route = Screen.CarDetailsScreen.route + "/{car_id}/{isSpecialEnabled}",
             arguments = listOf(
                 navArgument("car_id") {
                     type = NavType.StringType
-            } )
+            },
+                navArgument("isSpecialEnabled") {
+                    type = NavType.BoolType
+                })
         ) { entry ->
             val carId = entry.arguments?.getString("car_id")
+            val isSpecialCarEnabled = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
             if (carId != null) {
-                CarDetailsScreen(carId = carId.toString(), viewModel = viewModel)
+                CarDetailsScreen(carId = carId.toString(), viewModel = viewModel, isSpecialCarEnabled = isSpecialCarEnabled)
             } else {}
         }
     }

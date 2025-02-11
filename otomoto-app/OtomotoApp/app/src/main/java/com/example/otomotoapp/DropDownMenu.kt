@@ -1,103 +1,115 @@
 package com.example.otomotoapp
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.compose.AppTheme
+import org.w3c.dom.Text
 
 @Composable
-fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnabled: Boolean) {
-    val carSpecs by viewModel.getCarById(carId).observeAsState()
+fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, modifier: Modifier = Modifier) {
+    var isDropDownMenuExpanded by remember { mutableStateOf(true) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column() {
-            TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
-            SearchField()
-            if (carSpecs != null) {
-                CarDetails(carSpecs = carSpecs!!)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp).padding(top = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = textMenu,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            IconButton(onClick = { isDropDownMenuExpanded = !isDropDownMenuExpanded }) {
+                Icon(
+                    painter = if (isDropDownMenuExpanded) {
+                        painterResource(id = R.drawable.arrow_up)
+                    } else {
+                        painterResource(id = R.drawable.arrow_down)
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
-        if (carSpecs != null) {
-            BottomAppBar(carSpecs!!.price, carSpecs!!.link, Modifier.align(Alignment.BottomCenter))
-        } else {
-            BottomAppBar(0, "")
+        if (isDropDownMenuExpanded) {
+            DropDownMenuContent(carSpecs = carSpecs, textMenu = textMenu)
         }
     }
 }
 
 @Composable
-fun CarDetails(carSpecs: CarSpecs) {
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(20.dp)
-        .verticalScroll(rememberScrollState())
-    ) {
-        Image(painter = painterResource(id = R.drawable.no_image), contentDescription = "car photo")
-        Text(
-            text = "${carSpecs.mark} ${carSpecs.model} ${carSpecs.version ?: ""} (${carSpecs.year})",
-            style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        DropDownMenu(carSpecs = carSpecs, textMenu = "Basic")
-        DropDownMenu(carSpecs = carSpecs, textMenu = "Specification")
-
-
-        DropDownMenu(carSpecs = carSpecs, textMenu = "Description")
-        Spacer(modifier = Modifier.height(50.dp))
+fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
+    if (textMenu == "Basic") {
+        Column {
+            DropDownMenuContentText(parameterName = "Color", parameterValue = carSpecs.color)
+            DropDownMenuContentText(parameterName = "Number of doors", parameterValue = carSpecs.door_count.toString())
+            DropDownMenuContentText(parameterName = "Number of seats", parameterValue = carSpecs.seats_count.toString())
+            DropDownMenuContentText(parameterName = "Generation", parameterValue = carSpecs.generation)
+        }
+    }
+    if (textMenu == "Specification") {
+        Column {
+            DropDownMenuContentText(parameterName = "Fuel type", parameterValue = carSpecs.fuel_type)
+            DropDownMenuContentText(parameterName = "Engine capacity", parameterValue = carSpecs.engine_capacity.toString())
+            DropDownMenuContentText(parameterName = "Engine power", parameterValue = carSpecs.engine_power.toString())
+            DropDownMenuContentText(parameterName = "Body type", parameterValue = carSpecs.body_type)
+            DropDownMenuContentText(parameterName = "Gearbox", parameterValue = carSpecs.gearbox)
+            DropDownMenuContentText(parameterName = "Transmission", parameterValue = carSpecs.transmission)
+            DropDownMenuContentText(parameterName = "Urban consumption", parameterValue = carSpecs.urban_consumption)
+            DropDownMenuContentText(parameterName = "Extra urban consumption", parameterValue = carSpecs.extra_urban_consumption)
+        }
+    }
+    if (textMenu == "Description") {
+        Column {
+            Text(text = carSpecs.description)
+        }
     }
 }
 
 @Composable
-fun BottomAppBar(carPrice: Int, carLink: String, modifier: Modifier = Modifier) {
+fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
     Row(
-        modifier = modifier
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
             .fillMaxWidth()
-            .background(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f))
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
-        ) {
-        Button(onClick = {}) { 
-            Text(text = "View in Otomoto")
-        }
-        Text(text = "$carPrice PLN", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            .padding(horizontal = 38.dp)
+    ) {
+        Text(text = parameterName)
+        Text(text = parameterValue ?: "-")
     }
+    Row(modifier = Modifier.fillMaxWidth().height(1.dp)
+        .background(color = MaterialTheme.colorScheme.primaryContainer)) {  }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun CarDetailsScreenPreview() {
+fun DropDownMenuPreview() {
     val carSpecs = CarSpecs(
         car_id = "6132407608",
         date = "2025-01-05 10:58:16",
@@ -127,14 +139,9 @@ fun CarDetailsScreenPreview() {
         html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html"
     )
 
+
     AppTheme(dynamicColor = false) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column() {
-                TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
-                SearchField()
-                CarDetails(carSpecs = carSpecs)
-            }
-            BottomAppBar(carSpecs.price, carSpecs.link, Modifier.align(Alignment.BottomCenter))
-        }
+        DropDownMenu(carSpecs = carSpecs, textMenu = "Basic")
+
     }
 }
