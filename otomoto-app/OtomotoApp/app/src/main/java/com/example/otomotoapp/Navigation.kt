@@ -22,16 +22,30 @@ fun Navigation() {
             arguments = listOf(
                 navArgument("car_id") {
                     type = NavType.StringType
+                    nullable = false
             },
                 navArgument("isSpecialEnabled") {
                     type = NavType.BoolType
+                    nullable = false
                 })
         ) { entry ->
             val carId = entry.arguments?.getString("car_id")
             val isSpecialCarEnabled = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
             if (carId != null) {
-                CarDetailsScreen(carId = carId.toString(), viewModel = viewModel, isSpecialCarEnabled = isSpecialCarEnabled)
+                CarDetailsScreen(carId = carId.toString(), viewModel = viewModel, isSpecialCarEnabled = isSpecialCarEnabled, navController = navController)
             } else {}
+        }
+        composable(
+            route = Screen.FilterScreen.route + "/{isSpecialEnabled}",
+            arguments = listOf(
+                navArgument("isSpecialEnabled") {
+                    type = NavType.BoolType
+                    nullable = false
+                }
+            )
+        ) { entry ->
+            val isSpecialEnables = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
+            FilterScreen(isSpecialEnabled = isSpecialEnables, viewModel = viewModel, navController = navController)
         }
     }
 }

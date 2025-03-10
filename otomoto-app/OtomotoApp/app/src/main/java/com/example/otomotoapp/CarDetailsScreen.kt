@@ -1,9 +1,8 @@
 package com.example.otomotoapp
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,32 +18,37 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.example.compose.AppTheme
 
 @Composable
-fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnabled: Boolean) {
+fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnabled: Boolean, navController: NavHostController) {
     val carSpecs by viewModel.getCarById(carId).observeAsState()
+    val carPhotos by viewModel.carPhotosLiveData.observeAsState()
+    val carPhoto = carPhotos?.get(carId)
+
+    LaunchedEffect(carId) {
+        viewModel.getPhotoById(carId)
+    }
+    println(carPhoto)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column() {
-            TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
-            SearchField()
+            TopAppBar(isSpecialCarEnabled = isSpecialCarEnabled, viewModel = viewModel, navController = navController)
             if (carSpecs != null) {
-                CarDetails(carSpecs = carSpecs!!)
+                CarDetails(carSpecs = carSpecs!!, carPhoto)
             }
         }
         if (carSpecs != null) {
@@ -56,13 +60,26 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnable
 }
 
 @Composable
-fun CarDetails(carSpecs: CarSpecs) {
+fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?) {
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(20.dp)
         .verticalScroll(rememberScrollState())
     ) {
-        Image(painter = painterResource(id = R.drawable.no_image), contentDescription = "car photo")
+        if (carPhoto != null) {
+            Image(
+                bitmap = carPhoto.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().height(300.dp)
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.no_image),
+                contentDescription = "Placeholder image"
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "${carSpecs.mark} ${carSpecs.model} ${carSpecs.version ?: ""} (${carSpecs.year})",
             style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold
@@ -70,8 +87,8 @@ fun CarDetails(carSpecs: CarSpecs) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        DropDownMenu(carSpecs = carSpecs, textMenu = "Basic")
-        DropDownMenu(carSpecs = carSpecs, textMenu = "Specification")
+        DropDownMenu(carSpecs = carSpecs, textMenu = "Basic", isDropDownMenuExpanded = true)
+        DropDownMenu(carSpecs = carSpecs, textMenu = "Specification", isDropDownMenuExpanded = true)
 
 
         DropDownMenu(carSpecs = carSpecs, textMenu = "Description")
@@ -130,9 +147,8 @@ fun CarDetailsScreenPreview() {
     AppTheme(dynamicColor = false) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column() {
-                TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
-                SearchField()
-                CarDetails(carSpecs = carSpecs)
+//                TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
+                //CarDetails(carSpecs = carSpecs)
             }
             BottomAppBar(carSpecs.price, carSpecs.link, Modifier.align(Alignment.BottomCenter))
         }

@@ -29,8 +29,8 @@ import com.example.compose.AppTheme
 import org.w3c.dom.Text
 
 @Composable
-fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, modifier: Modifier = Modifier) {
-    var isDropDownMenuExpanded by remember { mutableStateOf(true) }
+fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, isDropDownMenuExpanded: Boolean = false, modifier: Modifier = Modifier) {
+    var isDropDownMenuExpanded by remember { mutableStateOf(isDropDownMenuExpanded) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(

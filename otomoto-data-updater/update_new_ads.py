@@ -1,3 +1,5 @@
+import re
+
 import requests
 import json
 from openpyxl import load_workbook
@@ -82,6 +84,11 @@ def create_safe_folder_name(url):
     return folder_path
 
 
+def extract_number(value):
+    match = re.search(r'\d+(\.\d+)?', value)
+    return float(match.group()) if match else None
+
+
 # Function to upload photos to a specified folder
 def download_images(photo_links, folder_path):
     for j, photo_url in enumerate(photo_links):
@@ -120,15 +127,21 @@ def extract_car_data(link, json_data):
     # TECHNICAL SPECS
     fuel_type = next((i["value"] for i in details if i["key"] == "fuel_type"), None)
     engine_capacity = next((i["value"] for i in details if i["key"] == "engine_capacity"), None)
-    engine_capacity = engine_capacity[:-4].replace(" ", "")
+    try:
+        engine_capacity = engine_capacity[:-4].replace(" ", "")
+    except:
+        pass
     engine_power = next((i["value"] for i in details if i["key"] == "engine_power"), None)
     engine_power = engine_power[:-3]
     body_type = next((i["value"] for i in details if i["key"] == "body_type"), None)
     gearbox = next((i["value"] for i in details if i["key"] == "gearbox"), None)
     transmission = next((i["value"] for i in details if i["key"] == "transmission"), None)
-    urban_consumption = next((i["value"] for i in details if i["key"] == "urban_consumption"), None)
-    extra_urban_consumption = next((i["value"] for i in details if i["key"] == "extra_urban_consumption"),
+    urban_consumption1 = next((i["value"] for i in details if i["key"] == "urban_consumption"), None)
+    extra_urban_consumption1 = next((i["value"] for i in details if i["key"] == "extra_urban_consumption"),
                                    None)
+    urban_consumption = extract_number(urban_consumption1) if urban_consumption1 else None
+    extra_urban_consumption = extract_number(extra_urban_consumption1) if extra_urban_consumption1 else None
+
     mileage = next((i["value"] for i in details if i["key"] == "mileage"), None)
     mileage = mileage[:-3].replace(" ", "")
 
@@ -275,8 +288,8 @@ def update_data(url, database_table, excel_table):
             car_info = extract_car_data(link, json_data)
             update_database(car_info, "new_ads", database_table)
             filtered_dict = {key: car_info[key] for key in car_info if key in new_column_order}
-            filtered_dict["year"] = int(filtered_dict["year"])
-            filtered_dict["price"] = int(filtered_dict["price"])
+            filtered_dict["year"] = int(float(filtered_dict["year"]))
+            filtered_dict["price"] = int(float(filtered_dict["price"]))
             filtered_dict["mileage"] = int(filtered_dict["mileage"])
             filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
             filtered_dict["relevant"] = "yes"

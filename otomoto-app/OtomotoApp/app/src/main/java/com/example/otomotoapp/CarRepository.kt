@@ -1,15 +1,43 @@
 package com.example.otomotoapp
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import okhttp3.ResponseBody
+import retrofit2.Response
 import java.math.BigInteger
 
 class CarRepository {
 
-    suspend fun getCars(isSpecialCarsEnabled: Boolean): List<CarSpecs> {
+    suspend fun getCars(
+        isSpecialCarsEnabled: Boolean,
+        mark: String? = null,
+        model: String? = null,
+        minPrice: Float? = null,
+        maxPrice: Float? = null,
+        minYear: Int? = null,
+        maxYear: Int? = null,
+        bodyType: String? = null,
+        minMileage: Float? = null,
+        maxMileage: Float? = null,
+        fuelType: String? = null,
+        minEngineCapacity: Float? = null,
+        maxEngineCapacity: Float? = null,
+        minUrbanConsumption: Float? = null,
+        maxUrbanConsumption: Float? = null
+    ): List<CarSpecs> {
         return try {
             if (isSpecialCarsEnabled) {
-            RetrofitClient.instance.getSpecialCars()
+            RetrofitClient.instance.getSpecialCars(
+                mark, model, minPrice, maxPrice, minYear, maxYear, bodyType,
+                minMileage, maxMileage, fuelType, minEngineCapacity,
+                maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption
+            )
         } else {
-            RetrofitClient.instance.getAllCars()
+            RetrofitClient.instance.getAllCars(
+                mark, model, minPrice, maxPrice, minYear, maxYear, bodyType,
+                minMileage, maxMileage, fuelType, minEngineCapacity,
+                maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption
+            )
         }
         } catch (e: Exception) {
             throw Exception("Failed to fetch car specs: ${e.message}")
@@ -25,6 +53,45 @@ class CarRepository {
             }
         } catch (e: Exception) {
             throw Exception("Failed to fetch car specs: ${e.message}")
+        }
+    }
+
+    suspend fun getPhotoBitmap(carId: String, isSpecialCarsEnabled: Boolean): Bitmap? {
+        return try {
+            val response = if (isSpecialCarsEnabled) {
+                RetrofitClient.instance.getPhotoByIdFromSpecial(carId)
+            } else {
+                RetrofitClient.instance.getPhotoByIdFromAll(carId)
+            }
+
+            response.body()?.byteStream()?.use { BitmapFactory.decodeStream(it) }
+
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch car photo: ${e.message}")
+        }
+    }
+
+    suspend fun getUniqueValues(value: String, isSpecialCarsEnabled: Boolean): UniqueValueResponse {
+        return try {
+            if (isSpecialCarsEnabled) {
+                RetrofitClient.instance.getUniqueValuesFromSpecial(value)
+            } else {
+                RetrofitClient.instance.getUniqueValuesFromAll(value)
+            }
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch unique values: ${e.message}")
+        }
+    }
+
+    suspend fun getMinMaxValues(value: String, isSpecialCarsEnabled: Boolean): MinMaxResponse {
+        return try {
+            if (isSpecialCarsEnabled) {
+                RetrofitClient.instance.getMinMaxValuesFromSpecial(value)
+            } else {
+                RetrofitClient.instance.getMinMaxValuesFromAll(value)
+            }
+        } catch (e: Exception) {
+            throw  Exception("Failed to fetch min and max values: ${e.message}")
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.example.otomotoapp
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,10 +37,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.example.compose.AppTheme
 
 @Composable
-fun TopAppBar(isSpecialCarEnabled: Boolean, viewModel: MainViewModel){
+fun TopAppBar(isSpecialCarEnabled: Boolean, viewModel: MainViewModel, navController: NavHostController){
+    val isFilterMenuExpanded = remember { mutableStateOf(false) }
+
     Row(modifier = Modifier
         .fillMaxWidth()
         .background(color = MaterialTheme.colorScheme.primaryContainer)
@@ -66,10 +70,14 @@ fun TopAppBar(isSpecialCarEnabled: Boolean, viewModel: MainViewModel){
             )
         }
     }
+    Column {
+        SearchField(isFilterMenuExpanded, navController = navController)
+    }
+
 }
 
 @Composable
-fun SearchField() {
+fun SearchField(isFilterMenuExpanded: MutableState<Boolean>, navController: NavHostController) {
     var searchText by remember { mutableStateOf(TextFieldValue("Search")) }
 
     Box(modifier = Modifier.padding(15.dp)) {
@@ -83,7 +91,9 @@ fun SearchField() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
 
-            IconButton(onClick = {}, modifier = Modifier.size(24.dp)) {
+            IconButton(onClick = {
+                navController.navigate(Screen.FilterScreen.withArgs(isFilterMenuExpanded.value))
+            }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     painter = painterResource(id = R.drawable.filter), contentDescription = null,
                     modifier = Modifier.fillMaxSize()
@@ -124,8 +134,7 @@ fun SearchField() {
 fun TopAppBarPreview() {
     AppTheme(dynamicColor = false) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
-            SearchField()
+//            TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
         }
     }
 }
