@@ -4,13 +4,13 @@ from .database import Base
 
 
 class BaseCar(Base):
-    __abstract__ = True  # SQLAlchemy doesn't create a table for this class
+    __abstract__ = 'cars_info'
 
     car_id = Column(Integer, primary_key=True)
     date = Column(String)
     mark = Column(String, index=True)
     model = Column(String)
-    version = Column(String)
+    version = Column(String,)
     year = Column(Integer, index=True)
     mileage = Column(Integer, index=True)
     fuel_type = Column(String)
@@ -35,6 +35,7 @@ class BaseCar(Base):
     location = Column(String)
     photo_path = Column(String)
     html_path = Column(String)
+
 
 class Car(BaseCar):
     __tablename__ = 'cars_info'
