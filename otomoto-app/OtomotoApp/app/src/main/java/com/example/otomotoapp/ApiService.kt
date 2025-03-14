@@ -9,16 +9,16 @@ import retrofit2.http.Query
 interface ApiService {
     @GET("/allcars/")
     suspend fun getAllCars(
-        @Query("mark") mark: String? = null,
+        @Query("mark") marks: List<String>? = null,
         @Query("model") model: String? = null,
         @Query("min_price") minPrice: Float? = null,
         @Query("max_price") maxPrice: Float? = null,
         @Query("min_year") minYear: Int? = null,
         @Query("max_year") maxYear: Int? = null,
-        @Query("body_type") bodyType: String? = null,
+        @Query("body_type") bodyType: List<String>? = null,
         @Query("min_mileage") minMileage: Float? = null,
         @Query("max_mileage") maxMileage: Float? = null,
-        @Query("fuel_type") fuelType: String? = null,
+        @Query("fuel_type") fuelType: List<String>? = null,
         @Query("min_engine_capacity") minEngineCapacity: Float? = null,
         @Query("max_engine_capacity") maxEngineCapacity: Float? = null,
         @Query("min_urban_consumption") minUrbanConsumption: Float? = null,
@@ -27,16 +27,16 @@ interface ApiService {
 
     @GET("/specialcars/")
     suspend fun getSpecialCars(
-        @Query("mark") mark: String? = null,
+        @Query("mark") mark: List<String>? = null,
         @Query("model") model: String? = null,
         @Query("min_price") minPrice: Float? = null,
         @Query("max_price") maxPrice: Float? = null,
         @Query("min_year") minYear: Int? = null,
         @Query("max_year") maxYear: Int? = null,
-        @Query("body_type") bodyType: String? = null,
+        @Query("body_type") bodyType: List<String>? = null,
         @Query("min_mileage") minMileage: Float? = null,
         @Query("max_mileage") maxMileage: Float? = null,
-        @Query("fuel_type") fuelType: String? = null,
+        @Query("fuel_type") fuelType: List<String>? = null,
         @Query("min_engine_capacity") minEngineCapacity: Float? = null,
         @Query("max_engine_capacity") maxEngineCapacity: Float? = null,
         @Query("min_urban_consumption") minUrbanConsumption: Float? = null,

@@ -1,5 +1,6 @@
 package com.example.otomotoapp
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +53,7 @@ fun OtomotoMainScreen(viewModel: MainViewModel, navController: NavHostController
     }
     Column(modifier = Modifier.fillMaxSize()) {
 
+        Log.d("DEBUGER", "carList = $carList")
         TopAppBar(isSpecialCarEnabled, viewModel, navController)
         CarAd(navController, carList, isSpecialCarEnabled)
     }

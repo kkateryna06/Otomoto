@@ -1,10 +1,13 @@
 package com.example.otomotoapp
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -12,6 +15,9 @@ import retrofit2.Response
 open class MainViewModel: ViewModel() {
 
     private val repository = CarRepository()
+
+    private val _filterOptions = MutableLiveData(FilterData())
+    val filterOptions: LiveData<FilterData> = _filterOptions
 
     // LiveData for car list
     private val _carList = MutableLiveData<List<CarSpecs>>()
@@ -74,30 +80,54 @@ open class MainViewModel: ViewModel() {
     val maxUrbanConsumption: LiveData<Float?> = _maxUrbanConsumption
 
 
+
+    private val _filterData = MutableStateFlow<FilterData?>(null)
+    val filterData: StateFlow<FilterData?> = _filterData
+
+    fun updateFilterOptions(update: FilterData.() -> FilterData) {
+        val currentData = _filterData.value ?: return
+        val newData = currentData.update()
+        _filterData.value = newData
+        Log.d("DEBUG", "updateFilterOptions: $newData")
+    }
+
+    fun setInitialFilterData(data: FilterData) {
+        if (_filterData.value == null) {
+            _filterData.value = data
+        }
+    }
+
+
+
+
+
     fun fetchCars() {
         viewModelScope.launch {
             try {
+                val filters = _filterData.value ?: FilterData()
+                Log.d("DEBUG", "Fetching cars with filters: minMileage=${filters.minMileage}, maxMileage=${filters.maxMileage}, minYear=${filters.minYear}, maxYear=${filters.maxYear}")
+
                 val cars = repository.getCars(
                     isSpecialCarsEnabled = _isSpecialCarEnabled.value ?: false,
-                    mark = _selectedMark.value,
-                    model = _selectedModel.value,
-                    minPrice = _minPrice.value,
-                    maxPrice = _maxPrice.value,
-                    minYear = _minYear.value,
-                    maxYear = _maxYear.value,
-                    bodyType = _selectedBodyType.value,
-                    minMileage = _minMileage.value,
-                    maxMileage = _maxMileage.value,
-                    fuelType = _selectedFuelType.value,
-                    minEngineCapacity = _minEngineCapacity.value,
-                    maxEngineCapacity = _maxEngineCapacity.value,
-                    minUrbanConsumption = _minUrbanConsumption.value,
-                    maxUrbanConsumption = _maxUrbanConsumption.value
+                    mark = filters.markList,
+//                    model = filters.modelList.toString(),
+                    minPrice = filters.minPrice,
+                    maxPrice = filters.maxPrice,
+                    minYear = filters.minYear.toInt(),
+                    maxYear = filters.maxYear.toInt(),
+                    bodyType = filters.bodyTypeList,
+                    minMileage = filters.minMileage,
+                    maxMileage = filters.maxMileage,
+                    fuelType = filters.fuelTypeList,
+                    minEngineCapacity = filters.minEngineCapacity,
+                    maxEngineCapacity = filters.maxEngineCapacity,
+                    minUrbanConsumption = filters.minUrbanConsumption,
+                    maxUrbanConsumption = filters.maxUrbanConsumption
                 )
-                _carList.value = cars
-                _errorMessage.value = null
+                _carList.postValue(cars)
+                _errorMessage.postValue(null)
             } catch (e: Exception) {
-                _errorMessage.value = "Error fetching cars: ${e.message}"
+                _errorMessage.postValue("Error fetching cars: ${e.message}")
             }
         }
     }

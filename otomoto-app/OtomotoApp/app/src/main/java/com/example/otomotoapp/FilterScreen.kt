@@ -36,6 +36,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 
 fun getMinMax(data: MinMaxResponse?): Pair<Float, Float> =
@@ -62,7 +64,11 @@ fun getUnique(data: UniqueValueResponse?) =
 
 @Composable
 fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navController: NavHostController) {
-    var filterData by remember { mutableStateOf<FilterData?>(null) }
+    val filterData by viewModel.filterData.collectAsState()
+
+    val filterDataBase by viewModel.filterData.collectAsState()
+    Log.d("DEBUG", "filterDataBase = $filterDataBase")
+
     val markData by viewModel.getUniqueValues("mark").observeAsState()
     val modelData by viewModel.getUniqueValues("model").observeAsState()
     val priceData by viewModel.getMinMaxValues("price").observeAsState()
@@ -81,7 +87,7 @@ fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navControl
     ).all { it != null }
 
     LaunchedEffect(allDataLoaded) {
-        if (allDataLoaded) {
+        if (allDataLoaded && filterData == null) {
             val newFilterData = FilterData(
                 markList = getUnique(markData),
                 modelList = getUnique(modelData),
@@ -101,35 +107,36 @@ fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navControl
                 minExtraUrbanConsumption = getMinMax(extraUrbanConsumptionData).first,
                 maxExtraUrbanConsumption = getMinMax(extraUrbanConsumptionData).second
             )
+            Log.d("DEBUG", "newFilterData = $newFilterData")
 
-            if (filterData != newFilterData) {
-                filterData = newFilterData
-            }
+            viewModel.setInitialFilterData(newFilterData)
         }
     }
 
-    Log.d("FilterData", "filterData = $filterData")
+    Log.d("DEBUG", "filterData = $filterData")
 
     if (filterData == null) {
         CircularProgressIndicator()
     } else {
-        test(filterData = filterData!!, navController = navController, viewModel = viewModel)
+        test(filterData = filterData!!, navController = navController, viewModel = viewModel, filterDataBase = filterDataBase!!)
     }
 }
+
 
 @Composable
 fun test(filterData: FilterData,
          navController: NavHostController,
-         viewModel: MainViewModel) {
-    val minPriceSlider = remember { mutableStateOf(0f) }
+         viewModel: MainViewModel,
+         filterDataBase: FilterData) {
+    val minPriceSlider = remember { mutableStateOf(filterData.minPrice) }
     val maxPriceSlider = remember { mutableStateOf(filterData.maxPrice) }
+    val maxPrice = viewModel.getMinMaxValues("price").observeAsState().value?.min_max_values?.getOrNull(1)?.toFloatOrNull()
+    Log.d("DEBUG", "maxPrice = $maxPrice")
 
 
-    maxPriceSlider.value = filterData.maxPrice
 
-
-    val minYearInput = remember { mutableStateOf("1990") }
-    val maxYearInput = remember { mutableStateOf("2025") }
+    val minYearInput = remember { mutableStateOf(filterData.minYear.toInt().toString()) }
+    val maxYearInput = remember { mutableStateOf(filterData.maxYear.toInt().toString()) }
 
     val minMileageInput = remember { mutableStateOf(filterData.minMileage.toInt().toString()) }
     val maxMileageInput = remember { mutableStateOf(filterData.maxMileage.toInt().toString()) }
@@ -166,7 +173,9 @@ fun test(filterData: FilterData,
             ) {
                 Text(text = "Price", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                PriceRangeSlider(minPriceSlider, maxPriceSlider, filterData.maxPrice)
+                if (maxPrice != null) {
+                    PriceRangeSlider(minPriceSlider, maxPriceSlider, maxPrice, viewModel)
+                }
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Mark", style = MaterialTheme.typography.titleLarge)
@@ -181,7 +190,21 @@ fun test(filterData: FilterData,
 
                 Text(text = "Year", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                RangeFilter(minYearInput, maxYearInput, viewModel)
+                RangeFilter(
+                    minValue = minYearInput,
+                    maxValue = maxYearInput,
+                    viewModel = viewModel,
+                    updateMinValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(minYear = value)
+                        }
+                    },
+                    updateMaxValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(maxYear = value)
+                        }
+                    }
+                )
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Body type", style = MaterialTheme.typography.titleLarge)
@@ -191,7 +214,21 @@ fun test(filterData: FilterData,
 
                 Text(text = "Mileage", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                RangeFilter(minMileageInput, maxMileageInput, viewModel)
+                RangeFilter(
+                    minValue = minMileageInput,
+                    maxValue = maxMileageInput,
+                    viewModel = viewModel,
+                    updateMinValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(minMileage = value)
+                        }
+                    },
+                    updateMaxValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(maxMileage = value)
+                        }
+                    }
+                )
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Fuel type", style = MaterialTheme.typography.titleLarge)
@@ -201,17 +238,47 @@ fun test(filterData: FilterData,
 
                 Text(text = "Engine capacity", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                RangeFilter(minEngineCapacityInput, maxEngineCapacityInput, viewModel)
+                RangeFilter(minEngineCapacityInput, maxEngineCapacityInput, viewModel,
+                    updateMinValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(minEngineCapacity = value)
+                        }
+                    },
+                    updateMaxValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(maxEngineCapacity = value)
+                        }
+                    })
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Urban consumption", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                RangeFilter(minUrbanConsumptionInput, maxUrbanConsumptionInput, viewModel)
+                RangeFilter(minUrbanConsumptionInput, maxUrbanConsumptionInput, viewModel,
+                    updateMinValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(minUrbanConsumption = value)
+                        }
+                    },
+                    updateMaxValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(maxUrbanConsumption = value)
+                        }
+                    })
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Extra urban consumption", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                RangeFilter(minExtraUrbanConsumptionInput, maxExtraUrbanConsumptionInput, viewModel)
+                RangeFilter(minExtraUrbanConsumptionInput, maxExtraUrbanConsumptionInput, viewModel,
+                    updateMinValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(minExtraUrbanConsumption = value)
+                        }
+                    },
+                    updateMaxValue = { value ->
+                        viewModel.updateFilterOptions {
+                            copy(maxExtraUrbanConsumption = value)
+                        }
+                    })
                 Spacer(modifier = Modifier.height(25.dp))
             }
 
@@ -224,13 +291,19 @@ fun test(filterData: FilterData,
 fun PriceRangeSlider(
     minPriceSlider: MutableState<Float>,
     maxPriceSlider: MutableState<Float>,
-    maxPrice: Float
+    maxPrice: Float,
+    viewModel: MainViewModel
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
         RangeSlider(
             value = minPriceSlider.value..maxPriceSlider.value,
-            onValueChange = { minPriceSlider.value = it.start; maxPriceSlider.value = it.endInclusive },
-            valueRange = 0f..maxPrice
+            onValueChange = {
+                minPriceSlider.value = it.start; maxPriceSlider.value = it.endInclusive
+                viewModel.updateFilterOptions { copy(minPrice = minPriceSlider.value) }
+                viewModel.updateFilterOptions { copy(maxPrice = maxPriceSlider.value) }
+                },
+
+            valueRange = 0f..25000f
         )
 
         Spacer (modifier = Modifier.height(5.dp))
@@ -240,7 +313,12 @@ fun PriceRangeSlider(
                 modifier = Modifier.weight(0.5f)) {
                 TextField(
                     value = minPriceSlider.value.toInt().toString(),
-                    onValueChange = { minPriceSlider.value = it.toFloat() },
+                    onValueChange = {
+                        minPriceSlider.value = it.toFloat()
+                        viewModel.updateFilterOptions {
+                            copy(minPrice = it.toFloat())
+                        }
+                                    },
                     textStyle = TextStyle(textAlign = TextAlign.Center),
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -264,7 +342,12 @@ fun PriceRangeSlider(
                 modifier = Modifier.weight(0.5f)) {
                 TextField(
                     value = maxPriceSlider.value.toInt().toString(),
-                    onValueChange = { maxPriceSlider.value = it.toFloat() },
+                    onValueChange = {
+                        maxPriceSlider.value = it.toFloat()
+                        viewModel.updateFilterOptions {
+                            copy(maxPrice = it.toFloat())
+                        }
+                                    },
                     textStyle = TextStyle(textAlign = TextAlign.Center),
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -357,7 +440,8 @@ fun CheckboxGroupElements(elementList: List<String>) {
 }
 
 @Composable
-fun RangeFilter(minValue: MutableState<String>, maxValue: MutableState<String>, viewModel: MainViewModel) {
+fun RangeFilter(minValue: MutableState<String>, maxValue: MutableState<String>, viewModel: MainViewModel,
+                updateMinValue: (Float) -> Unit, updateMaxValue: (Float) -> Unit) {
     Row(horizontalArrangement = Arrangement.SpaceBetween) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = "From")
@@ -365,9 +449,7 @@ fun RangeFilter(minValue: MutableState<String>, maxValue: MutableState<String>, 
                 value = minValue.value,
                 onValueChange = {
                     minValue.value = it
-                    viewModel.updateFilterOptions {
-                        copy()
-                    }
+                    updateMinValue(it.toFloatOrNull() ?: 0f)
                                 },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 singleLine = true,
@@ -380,7 +462,10 @@ fun RangeFilter(minValue: MutableState<String>, maxValue: MutableState<String>, 
             Text(text = "To")
             TextField(
                 value = maxValue.value,
-                onValueChange = { maxValue.value = it },
+                onValueChange = {
+                    maxValue.value = it
+                    updateMaxValue(it.toFloatOrNull() ?: 0f)
+                                },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 15.sp),

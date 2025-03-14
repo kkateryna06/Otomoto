@@ -3,6 +3,7 @@ package com.example.otomotoapp
 data class FilterData(
     val markList: List<String> = emptyList(),
     val modelList: List<String> = emptyList(),
+    val minPrice: Float = 0f,
     val maxPrice: Float = 0f,
     val minYear: Float = 0f,
     val maxYear: Float = 0f,
