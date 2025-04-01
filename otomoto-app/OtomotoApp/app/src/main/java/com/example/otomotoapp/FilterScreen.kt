@@ -44,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -52,7 +51,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 
 fun getMinMax(data: MinMaxResponse?): Pair<Float, Float> =
@@ -64,10 +62,8 @@ fun getUnique(data: UniqueValueResponse?) =
 
 @Composable
 fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navController: NavHostController) {
-    val filterData by viewModel.filterData.collectAsState()
-
-    val filterDataBase by viewModel.filterData.collectAsState()
-    Log.d("DEBUG", "filterDataBase = $filterDataBase")
+    val userFilterData by viewModel.userFilterData.collectAsState()
+    val baseFilterData by viewModel.baseFilterData.collectAsState()
 
     val markData by viewModel.getUniqueValues("mark").observeAsState()
     val modelData by viewModel.getUniqueValues("model").observeAsState()
@@ -87,7 +83,7 @@ fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navControl
     ).all { it != null }
 
     LaunchedEffect(allDataLoaded) {
-        if (allDataLoaded && filterData == null) {
+        if (allDataLoaded && userFilterData == null) {
             val newFilterData = FilterData(
                 markList = getUnique(markData),
                 modelList = getUnique(modelData),
@@ -107,32 +103,28 @@ fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navControl
                 minExtraUrbanConsumption = getMinMax(extraUrbanConsumptionData).first,
                 maxExtraUrbanConsumption = getMinMax(extraUrbanConsumptionData).second
             )
-            Log.d("DEBUG", "newFilterData = $newFilterData")
 
-            viewModel.setInitialFilterData(newFilterData)
+            viewModel.setBaseFilterData(newFilterData)
         }
     }
 
-    Log.d("DEBUG", "filterData = $filterData")
-
-    if (filterData == null) {
+    if (baseFilterData == null) {
         CircularProgressIndicator()
     } else {
-        test(filterData = filterData!!, navController = navController, viewModel = viewModel, filterDataBase = filterDataBase!!)
+        test(filterData = userFilterData ?: baseFilterData!!, baseFilterData = baseFilterData!!, navController = navController, viewModel = viewModel)
     }
 }
 
 
 @Composable
 fun test(filterData: FilterData,
+         baseFilterData: FilterData,
          navController: NavHostController,
-         viewModel: MainViewModel,
-         filterDataBase: FilterData) {
+         viewModel: MainViewModel
+) {
     val minPriceSlider = remember { mutableStateOf(filterData.minPrice) }
     val maxPriceSlider = remember { mutableStateOf(filterData.maxPrice) }
     val maxPrice = viewModel.getMinMaxValues("price").observeAsState().value?.min_max_values?.getOrNull(1)?.toFloatOrNull()
-    Log.d("DEBUG", "maxPrice = $maxPrice")
-
 
 
     val minYearInput = remember { mutableStateOf(filterData.minYear.toInt().toString()) }
@@ -171,22 +163,38 @@ fun test(filterData: FilterData,
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
+                Button(onClick = { viewModel.resetUserFilters() }) {
+                    Text("Clear filters")
+                }
+
                 Text(text = "Price", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
                 if (maxPrice != null) {
-                    PriceRangeSlider(minPriceSlider, maxPriceSlider, maxPrice, viewModel)
+                    PriceRangeSlider(minPriceSlider, maxPriceSlider, baseFilterData.maxPrice, filterData, viewModel)
                 }
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Mark", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                CheckboxGroup(filterData.markList)
+                CheckboxGroup(onAddFilterItem = { item ->
+                    viewModel.addToFilterList(
+                        selector = {markList},
+                        item = item,
+                        updater = {copy(markList = it)}
+                    )
+                }, onRemoveFilterItem = { item ->
+                    viewModel.removeFromFilterList(
+                        selector = {markList},
+                        item = item,
+                        updater = {copy(markList = it)}
+                    )
+                }, elementList = baseFilterData.markList, userElementList =  filterData.markList, viewModel =  viewModel)
                 Spacer(modifier = Modifier.height(25.dp))
 
-                Text(text = "Model", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(10.dp))
-                CheckboxGroup(filterData.modelList)
-                Spacer(modifier = Modifier.height(25.dp))
+//                Text(text = "Model", style = MaterialTheme.typography.titleLarge)
+//                Spacer(modifier = Modifier.height(10.dp))
+//                CheckboxGroup(filterData.modelList, viewModel)
+//                Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Year", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
@@ -195,12 +203,12 @@ fun test(filterData: FilterData,
                     maxValue = maxYearInput,
                     viewModel = viewModel,
                     updateMinValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(minYear = value)
                         }
                     },
                     updateMaxValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(maxYear = value)
                         }
                     }
@@ -209,7 +217,19 @@ fun test(filterData: FilterData,
 
                 Text(text = "Body type", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                CheckboxGroup(filterData.bodyTypeList)
+                CheckboxGroup(onAddFilterItem = { item ->
+                    viewModel.addToFilterList(
+                        selector = {bodyTypeList},
+                        item = item,
+                        updater = { copy(bodyTypeList = it) }
+                    )
+                }, onRemoveFilterItem = { item ->
+                    viewModel.removeFromFilterList(
+                        selector = {bodyTypeList},
+                        item = item,
+                        updater = { copy(bodyTypeList = it) }
+                    )
+                }, elementList =  baseFilterData.bodyTypeList, userElementList =  filterData.bodyTypeList, viewModel =  viewModel)
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Mileage", style = MaterialTheme.typography.titleLarge)
@@ -219,12 +239,12 @@ fun test(filterData: FilterData,
                     maxValue = maxMileageInput,
                     viewModel = viewModel,
                     updateMinValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(minMileage = value)
                         }
                     },
                     updateMaxValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(maxMileage = value)
                         }
                     }
@@ -233,52 +253,67 @@ fun test(filterData: FilterData,
 
                 Text(text = "Fuel type", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                CheckboxGroup(filterData.fuelTypeList)
+                CheckboxGroup(onAddFilterItem = { item ->
+                    viewModel.addToFilterList(
+                        selector = {fuelTypeList},
+                        item = item,
+                        updater = {copy(bodyTypeList = it)}
+                    )
+                }, onRemoveFilterItem = { item ->
+                    viewModel.removeFromFilterList(
+                        selector = {fuelTypeList},
+                        item = item,
+                        updater = {copy(fuelTypeList = it)}
+                    )
+                }, elementList = baseFilterData.fuelTypeList ,userElementList = filterData.fuelTypeList, viewModel =  viewModel)
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Engine capacity", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
                 RangeFilter(minEngineCapacityInput, maxEngineCapacityInput, viewModel,
                     updateMinValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(minEngineCapacity = value)
                         }
                     },
                     updateMaxValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(maxEngineCapacity = value)
                         }
-                    })
+                    }
+                )
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Urban consumption", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
                 RangeFilter(minUrbanConsumptionInput, maxUrbanConsumptionInput, viewModel,
                     updateMinValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(minUrbanConsumption = value)
                         }
                     },
                     updateMaxValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(maxUrbanConsumption = value)
                         }
-                    })
+                    }
+                )
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Extra urban consumption", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
                 RangeFilter(minExtraUrbanConsumptionInput, maxExtraUrbanConsumptionInput, viewModel,
                     updateMinValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(minExtraUrbanConsumption = value)
                         }
                     },
                     updateMaxValue = { value ->
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(maxExtraUrbanConsumption = value)
                         }
-                    })
+                    }
+                )
                 Spacer(modifier = Modifier.height(25.dp))
             }
 
@@ -291,7 +326,8 @@ fun test(filterData: FilterData,
 fun PriceRangeSlider(
     minPriceSlider: MutableState<Float>,
     maxPriceSlider: MutableState<Float>,
-    maxPrice: Float,
+    maxBasePrice: Float,
+    userFilterData: FilterData,
     viewModel: MainViewModel
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -299,11 +335,12 @@ fun PriceRangeSlider(
             value = minPriceSlider.value..maxPriceSlider.value,
             onValueChange = {
                 minPriceSlider.value = it.start; maxPriceSlider.value = it.endInclusive
-                viewModel.updateFilterOptions { copy(minPrice = minPriceSlider.value) }
-                viewModel.updateFilterOptions { copy(maxPrice = maxPriceSlider.value) }
+                viewModel.updateFilterData { copy(minPrice = minPriceSlider.value) }
+                viewModel.updateFilterData { copy(maxPrice = maxPriceSlider.value) }
+                Log.d("DEBUG", "$userFilterData")
                 },
 
-            valueRange = 0f..25000f
+            valueRange = 0f..maxBasePrice
         )
 
         Spacer (modifier = Modifier.height(5.dp))
@@ -315,7 +352,7 @@ fun PriceRangeSlider(
                     value = minPriceSlider.value.toInt().toString(),
                     onValueChange = {
                         minPriceSlider.value = it.toFloat()
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(minPrice = it.toFloat())
                         }
                                     },
@@ -344,7 +381,7 @@ fun PriceRangeSlider(
                     value = maxPriceSlider.value.toInt().toString(),
                     onValueChange = {
                         maxPriceSlider.value = it.toFloat()
-                        viewModel.updateFilterOptions {
+                        viewModel.updateFilterData {
                             copy(maxPrice = it.toFloat())
                         }
                                     },
@@ -372,7 +409,7 @@ fun PriceRangeSlider(
 }
 
 @Composable
-fun CheckboxGroup(elementList: List<String>) {
+fun CheckboxGroup(elementList: List<String>, userElementList: List<String>, onAddFilterItem: (String)->Unit, onRemoveFilterItem: (String)->Unit, viewModel: MainViewModel) {
     if (elementList.size > 5) {
         val showMoreExpanded = remember { mutableStateOf(false) }
         Column {
@@ -402,20 +439,20 @@ fun CheckboxGroup(elementList: List<String>) {
                 }
             }
             if (!showMoreExpanded.value) {
-                CheckboxGroupElements(elementList.take(5))
+                CheckboxGroupElements(elementList.take(5), userElementList, onAddFilterItem, onRemoveFilterItem, viewModel)
             } else {
-                CheckboxGroupElements(elementList)
+                CheckboxGroupElements(elementList, userElementList, onAddFilterItem, onRemoveFilterItem, viewModel)
             }
         }
     } else {
-        CheckboxGroupElements(elementList)
+        CheckboxGroupElements(elementList, userElementList, onAddFilterItem, onRemoveFilterItem, viewModel)
     }
 }
 
 @Composable
-fun CheckboxGroupElements(elementList: List<String>) {
+fun CheckboxGroupElements(elementList: List<String>, userElementList: List<String>, onAddFilterItem: (String)->Unit, onRemoveFilterItem: (String)->Unit, viewModel: MainViewModel) {
     val checkedState = remember { mutableStateMapOf<String, Boolean>().apply {
-        elementList.forEach { this[it] = false }
+        elementList.forEach { this[it] = userElementList.contains(it)}
     } }
 
     Column {
@@ -429,6 +466,11 @@ fun CheckboxGroupElements(elementList: List<String>) {
                     .background(color = if (isChecked) MaterialTheme.colorScheme.onSecondaryContainer else Color.Transparent)
                     .clickable(onClick = {
                         checkedState[item] = !isChecked
+                        if (!isChecked) {
+                            onAddFilterItem(item)
+                        } else {
+                            onRemoveFilterItem(item)
+                        }
                     })
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -485,24 +527,6 @@ fun BottomFilterBar(navController: NavHostController, modifier: Modifier = Modif
     ) {
         Button(onClick = { navController.navigate(Screen.MainScreen.route) }) {
             Text(text = "Apply Filters")
-        }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun FilterMenuPreview() {
-    val isFilterMenuExpanded = remember { mutableStateOf(true) }
-    val marks = listOf("Rio", "Lancer", "Focus", "Megane", "Mondeo", "M4", "306")
-    val models = listOf("Rio", "Lancer", "Focus", "Megane", "Mondeo", "M4", "306")
-    val maxPrice = 30000f
-    val bodyTypes = listOf("Coupe", "kombi", "SUV", "Sedan")
-    val fuelTypes = listOf("Benzyna", "Diesel", "Elektryczny")
-
-    AppTheme(dynamicColor = false) {
-        Box() {
-//            test(marks, models, maxPrice, bodyTypes, fuelTypes)
         }
     }
 }

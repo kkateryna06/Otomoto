@@ -9,8 +9,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import okhttp3.ResponseBody
-import retrofit2.Response
 
 open class MainViewModel: ViewModel() {
 
@@ -29,7 +27,7 @@ open class MainViewModel: ViewModel() {
 
     fun toggleSpecialCarSwitch(isEnabled: Boolean) {
         _isSpecialCarEnabled.value = isEnabled
-        fetchCars() // Re-fetch data when the toggle changes
+        fetchCars()
     }
 
     // LiveData for error messages
@@ -80,31 +78,54 @@ open class MainViewModel: ViewModel() {
     val maxUrbanConsumption: LiveData<Float?> = _maxUrbanConsumption
 
 
+    private val _userFilterData = MutableStateFlow<FilterData?>(null)
+    val userFilterData: StateFlow<FilterData?> = _userFilterData
 
-    private val _filterData = MutableStateFlow<FilterData?>(null)
-    val filterData: StateFlow<FilterData?> = _filterData
+    private val _baseFilterData = MutableStateFlow<FilterData?>(null)
+    val baseFilterData : StateFlow<FilterData?> = _baseFilterData
 
-    fun updateFilterOptions(update: FilterData.() -> FilterData) {
-        val currentData = _filterData.value ?: return
-        val newData = currentData.update()
-        _filterData.value = newData
-        Log.d("DEBUG", "updateFilterOptions: $newData")
-    }
-
-    fun setInitialFilterData(data: FilterData) {
-        if (_filterData.value == null) {
-            _filterData.value = data
+    fun setBaseFilterData(data: FilterData) {
+        if (_baseFilterData.value == null) {
+            _baseFilterData.value = data
+            _userFilterData.value = data
         }
     }
 
+    fun updateFilterData(update: FilterData.() -> FilterData) {
+        val currentData = _userFilterData.value
+        val newData = currentData?.update()
+        _userFilterData.value = newData
+        Log.d("DEBUG", "userFilterData was updated = ${userFilterData.value}")
+    }
 
+    fun resetUserFilters() {
+        _userFilterData.value = _baseFilterData.value
+    }
+
+    fun addToFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
+        Log.d("DEBUG", "userFilter data before add: ${userFilterData.value?.bodyTypeList}")
+        updateFilterData {
+            val updatedList = selector() + item
+            updater(updatedList)
+        }
+        Log.d("DEBUG", "userFilter data after add: ${userFilterData.value?.bodyTypeList}")
+    }
+
+    fun removeFromFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
+        Log.d("DEBUG", "userFilter data before remove: ${userFilterData.value?.bodyTypeList}")
+        updateFilterData {
+            val updatedList = selector() - item
+            updater(updatedList)
+        }
+        Log.d("DEBUG", "userFilter data after remove: ${userFilterData.value?.bodyTypeList}")
+    }
 
 
 
     fun fetchCars() {
         viewModelScope.launch {
             try {
-                val filters = _filterData.value ?: FilterData()
+                val filters = _userFilterData.value ?: FilterData()
                 Log.d("DEBUG", "Fetching cars with filters: minMileage=${filters.minMileage}, maxMileage=${filters.maxMileage}, minYear=${filters.minYear}, maxYear=${filters.maxYear}")
 
                 val cars = repository.getCars(
