@@ -8,6 +8,7 @@ class BaseCar(Base):
 
     car_id = Column(Integer, primary_key=True)
     date = Column(String)
+    sell_date = Column(String)
     mark = Column(String, index=True)
     model = Column(String)
     version = Column(String,)

@@ -84,3 +84,57 @@ def update_database(data, to_do, database_table):
         if connection:
             connection.close()
             print("Connection closed")
+
+
+
+def get_all_car_links(database_table):
+    try:
+        connection = psycopg2.connect(
+            host="localhost",
+            database="otomoto",
+            user="postgres",
+            password="990",
+        )
+
+        with connection.cursor() as cursor:
+            query = SQL("SELECT link FROM {}").format(Identifier(database_table))
+            cursor.execute(query)
+            result = cursor.fetchall()
+            # Преобразуем список кортежей [(1,), (2,), (3,)] в [1, 2, 3]
+            car_ids = [row[0] for row in result]
+            return car_ids
+
+    except Exception as ex:
+        print(f"Error: {ex}")
+        return []
+
+    finally:
+        if connection:
+            connection.close()
+
+
+def get_all_car_links_for_relevant_check(database_table):
+    try:
+        connection = psycopg2.connect(
+            host="localhost",
+            database="otomoto",
+            user="postgres",
+            password="990",
+        )
+
+        with connection.cursor() as cursor:
+            query = SQL("SELECT link FROM {} where sell_date is null").format(Identifier(database_table))
+            cursor.execute(query)
+            result = cursor.fetchall()
+            # Преобразуем список кортежей [(1,), (2,), (3,)] в [1, 2, 3]
+            car_ids = [row[0] for row in result]
+            return car_ids
+
+    except Exception as ex:
+        print(f"Error: {ex}")
+        return []
+
+    finally:
+        if connection:
+            connection.close()
+

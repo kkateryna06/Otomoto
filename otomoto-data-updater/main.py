@@ -19,8 +19,9 @@ elif to_do == 2:
     to_do = int(input())
     # Updating relevant state for all cars
     if to_do == 1:
-        task_relevant("cars_info.xlsx")
+        task_relevant("cars_info")
     # Updating relevant state for special cars
     if to_do == 2:
-        task_relevant("special_cars_info.xlsx")
+        task_relevant("special_cars_info")
 
+# uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

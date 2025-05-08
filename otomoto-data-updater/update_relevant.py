@@ -4,7 +4,7 @@ from openpyxl import load_workbook
 from datetime import datetime
 import os
 
-from database_update import update_database
+from database_update import update_database, get_all_car_links_for_relevant_check
 
 
 # Function to check the link
@@ -23,46 +23,22 @@ def fetch_html(url):
 
 
 # Function to update the "Relevant" column
-def update_relevant_column_with_openpyxl(excel_table, date):
+def update_relevant_column_with_openpyxl(database_table, date):
     try:
-        # Load an existing file
-        workbook = load_workbook(excel_table)
-        sheet = workbook.active  # Default Worksheet
-
-        # Find the indexes of the columns "Car Link" and "Relevant"
-        headers = [cell.value for cell in sheet[1]]  # Read the first line (headings)
-        car_link_idx = headers.index("link") + 1
-        relevant_idx = headers.index("relevant") + 1
-        sell_date_idx = headers.index("sell_date") + 1
-
+        links = get_all_car_links_for_relevant_check(database_table)
         # Process each line
-        for row in range(2, sheet.max_row + 1):
-            car_link = sheet.cell(row=row, column=car_link_idx).value
-            if car_link and sheet.cell(row=row, column=relevant_idx).value == "yes":
-                print(f"Checking {car_link}")
-                is_active = fetch_html(car_link)  # Check if the URL is available
-                relevant_value = "yes" if is_active else "no"
-
-                if sheet.cell(row=row, column=relevant_idx).value != relevant_value:
-                    sheet.cell(row=row, column=relevant_idx).value = relevant_value
-
-                    sell_date = datetime.now().strftime(date)
-                    sheet.cell(row=row, column=sell_date_idx).value = sell_date
-
-                    update_database([car_link, date], "car_relevant", excel_table[:len(excel_table)-5])
-
-        # Save the file
-        workbook.save(excel_table)
-        print("The file has been successfully updated with formatting preserved!")
+        for link in links:
+            print(f"Checking {link}")
+            is_active = fetch_html(link)  # Check if the URL is available
+            if not is_active:
+                update_database([link, date], "car_relevant", database_table)
+        print("Db has been successfully updated!")
     except Exception as e:
-        print(f"Error updating Excel file: {e}")
+        print(f"Error updating db file: {e}")
 
 
-def task_relevant(excel_table):
+def task_relevant(database_table):
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if os.path.exists(excel_table):
-        update_relevant_column_with_openpyxl(excel_table, date)
-        with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-            f.write(f'Relevant info in {excel_table} was updated {date}\n')  # Log
-    else:
-        print("File cars_data.xlsx not found.")
+    update_relevant_column_with_openpyxl(database_table, date)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'Relevant info in {database_table} was updated {date}\n')  # Log

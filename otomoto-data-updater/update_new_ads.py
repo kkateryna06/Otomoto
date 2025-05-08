@@ -9,7 +9,7 @@ import urllib.parse
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-from database_update import update_database
+from database_update import update_database, get_all_car_links, get_all_car_links_for_relevant_check
 
 
 # Function for loading HTML content
@@ -227,22 +227,7 @@ def update_excel_with_styles(existing_file, updated_df):
 # Function to retrieve information about machines
 def update_data(url, database_table, excel_table):
     # Load an existing table if it exists
-    if os.path.exists(excel_table):
-        try:
-            existing_df = pd.read_excel(excel_table)
-            if "link" in existing_df.columns:
-                existing_links = set(existing_df["link"].dropna().str.strip())
-            else:
-                print("The 'link' column is missing from the file.")
-                existing_df = pd.DataFrame()
-                existing_links = set()
-        except Exception as e:
-            print(f"Error reading Excel file: {e}")
-            existing_df = pd.DataFrame()
-            existing_links = set()
-    else:
-        existing_df = pd.DataFrame()
-        existing_links = set()
+    existing_links = get_all_car_links(database_table)
 
     # Get the HTML content of the page
     html = fetch_html(url)
@@ -256,7 +241,6 @@ def update_data(url, database_table, excel_table):
 
     for link in links:
         if link in existing_links:
-            print(f"Skip the ad (already in the table): {link}")
             continue
 
         count+= 1
@@ -297,15 +281,6 @@ def update_data(url, database_table, excel_table):
 
     # Save updated date
     if new_car_data:
-        new_df = pd.DataFrame(new_car_data)
-        updated_df = pd.concat([existing_df, new_df], ignore_index=True)
-        updated_df = updated_df[new_column_order]
-
-        # Instead of pandas.to_excel we use openpyxl to save styles
-        if os.path.exists(excel_table):
-            update_excel_with_styles(excel_table, updated_df)
-        else:
-            updated_df.to_excel(excel_table, index=False)  # If the file does not exist, create it
         print(f"Table successfully updated! {count} new ads")
 
     else:
@@ -317,50 +292,89 @@ def task_special():
     excel_table = "special_cars_info.xlsx"
 
     """MITSUBISHI LANCER"""
-    url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc'
+    url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
         f.write(f'Mitsubishi Lancer ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
     """KIA RIO"""
-    url = 'https://www.otomoto.pl/osobowe/kia/rio?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/kia/rio?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
         f.write(f'Kia Rio ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
     """HONDA CIVIC"""
-    url = 'https://www.otomoto.pl/osobowe/honda/civic?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Ato%5D=27000&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/honda/civic?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Ato%5D=30000&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
         f.write(f'Honda Civic ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
     """OPEL ASTRA"""
-    url = 'https://www.otomoto.pl/osobowe/opel/astra?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/opel/astra?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
         f.write(f'Opel Astra ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
     """FORD FOCUS"""
-    url = 'https://www.otomoto.pl/osobowe/ford/focus?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/ford/focus?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Opel Astra ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+        f.write(f'FORD FOCUS ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
     """CITROEN C5"""
-    url = 'https://www.otomoto.pl/osobowe/citroen/c5?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/citroen/c5?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Opel Astra ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+        f.write(f'CITROEN C5 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
     """RENAULT MEGANE"""
-    url = 'https://www.otomoto.pl/osobowe/renault/megane?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=27000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/renault/megane?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Opel Astra ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+        f.write(f'RENAULT MEGANE ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+    """MAZDA 3 & 6"""
+    url = 'https://www.otomoto.pl/osobowe/mazda/3?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'MAZDA 3 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+    url = 'https://www.otomoto.pl/osobowe/mazda/6?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'MAZDA 6 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+    """VOLKSWAGEN JETTA"""
+    url = 'https://www.otomoto.pl/osobowe/volkswagen/jetta?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'VOLKSWAGEN JETTA ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+    """SKODA OCTAVIA"""
+    url = 'https://www.otomoto.pl/osobowe/skoda/octavia?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'SKODA OCTAVIA ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+
+
+    """PEUGEOT 207"""
+    url = 'https://www.otomoto.pl/osobowe/peugeot/207?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=10000&search%5Bfilter_float_price%3Ato%5D=20000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'PEUGEOT 207 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+    """PEUGEOT 308"""
+    url = 'https://www.otomoto.pl/osobowe/peugeot/308?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=10000&search%5Bfilter_float_price%3Ato%5D=20000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'PEUGEOT 308 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+
 
 
 def task():
-    url = 'https://www.otomoto.pl/osobowe/seg-cabrio--seg-city-car--seg-combi--seg-compact--seg-coupe--seg-mini--seg-sedan/od-2010/dolnoslaskie?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_mileage%3Ato%5D=200000&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=25000&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/seg-cabrio--seg-city-car--seg-combi--seg-compact--seg-coupe--seg-mini--seg-sedan/od-2010/dolnoslaskie?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_mileage%3Ato%5D=200000&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=25000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     database_table = "cars_info"
     excel_table = "cars_info.xlsx"
     update_data(url, database_table, excel_table)
