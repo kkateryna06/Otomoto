@@ -14,20 +14,34 @@ from database_update import update_database, get_all_car_links, get_all_car_link
 
 # Function for loading HTML content
 def fetch_html(url):
+    """
+    Loads HTML pages following a URL with a "fake" browser title.
+    :param url: URL to load
+    :return: HTML content of the page
+    """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
     }
     try:
+        # Check for a successful response
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Check for a successful response
+        response.raise_for_status()
         return response.text
+
     except requests.exceptions.HTTPError as e:
+        # Return None in case of error
         print(f"Error requesting URL: {url} - {e}")
-        return None  # Return None in case of error
+        return None
 
 
 # Function to extract JSON data from the first found script
 def extract_json_from_html(html_content):
+    """
+    Finds a block <script type="application/ld+json"> on the page,
+    where there is basic information about the product
+    :param html_content: HTML content of the page
+    :return: JSON data from the script
+    """
     soup = BeautifulSoup(html_content, 'html.parser')
     script = soup.find('script', {'type': 'application/ld+json'})
     if script:
@@ -40,6 +54,13 @@ def extract_json_from_html(html_content):
 
 # Function to extract JSON data from <script id="__NEXT_DATA__"> tag
 def extract_json_from_script_tag(html_content):
+    """
+    The main function is to look for the
+    <script id="__NEXT_DATA__" type="application/json"> tag,
+    which contains full information about the ad. This is the main source of data.
+    :param html_content: HTML content of the page
+    :return: JSON data from the script tag
+    """
     soup = BeautifulSoup(html_content, 'html.parser')
 
     # Find the required tag <script id="__NEXT_DATA__" type="application/json">
@@ -58,14 +79,18 @@ def extract_json_from_script_tag(html_content):
 
 # Function to extract links
 def extract_links(html_content):
-    # Разбор HTML
+    """
+    Finds all ad links that contain otomoto.pl and ID in the URL. Returns set() of unique links.
+    :param html_content: HTML content of the page
+    :return: set() of unique links
+    """
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Поиск всех тегов <a>, содержащих ссылки на объявления
+    # Find all <a> tags containing links to ads
     links = set()
     for a_tag in soup.find_all('a', href=True):
         href = a_tag['href']
-        if "otomoto.pl" in href and "ID" in href:  # Пример фильтрации для ссылок на объявления
+        if "otomoto.pl" in href and "ID" in href:
             links.add(href)
 
     return links
@@ -73,24 +98,47 @@ def extract_links(html_content):
 
 # Function to convert URL to safe file name
 def sanitize_filename(url):
-    # Convert the URL to a filesystem-safe string
+    """
+    Converts URLs to safe file names.
+    Used to store photos and HTML to avoid characters that are not allowed in file names.
+    :param url: URL to convert
+    :return: Safe file name
+    """
     return urllib.parse.quote(url, safe='')
 
 
 def create_safe_folder_name(url):
+    """
+    Converts URLs to safe folder names.
+    Used to store photos and HTML to avoid characters that are not allowed in folder names.
+    :param url: URL to convert
+    :return: Safe folder name
+    """
     folder_name = sanitize_filename(url)
     folder_path = os.path.join("car_photos", folder_name)
-    os.makedirs(folder_path, exist_ok=True)  # Create a folder if it doesn't exist
+
+    # Create a folder if it doesn't exist
+    os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
 
 def extract_number(value):
+    """
+    Extracts a number from a string. Eg: "180 KM" → 180.0
+    :param value: String to extract number from
+    :return: Extracted number or None if not found
+    """
     match = re.search(r'\d+(\.\d+)?', value)
     return float(match.group()) if match else None
 
 
 # Function to upload photos to a specified folder
 def download_images(photo_links, folder_path):
+    """
+    Downloads photos from links and saves them in the car_photos folder.
+    :param photo_links: List of photo URLs
+    :param folder_path: Path to the folder where photos will be saved
+    """
     for j, photo_url in enumerate(photo_links):
         try:
             response = requests.get(photo_url, stream=True)
@@ -103,57 +151,83 @@ def download_images(photo_links, folder_path):
 
 # Function to clear description from HTML tags
 def clean_html_description(description_html):
+    """
+    Cleans the description from HTML tags - extracts clean text.
+    :param description_html: HTML description
+    :return: Clean text from the description
+    """
     # Using BeautifulSoup to Clean HTML
     soup = BeautifulSoup(description_html, "html.parser")
-    return soup.get_text(separator=" ").strip()  # Return only text separated by spaces
 
+    # Return only text separated by spaces
+    return soup.get_text(separator=" ").strip()
+
+def extract_param(label, parameters, is_label=False):
+    """
+    Helper function for safely retrieving values from declaration JSON parameters.
+    Works with both .label and .value.
+    :param label: Parameter label
+    :param parameters: Declaration JSON parameters
+    :param is_label: Whether the parameter is a label or not
+    :return: Parameter value or None if not found
+    """
+    try:
+        if is_label:
+            return parameters.get(label, {}).get("values")[0].get("label")
+        else:
+            return parameters.get(label, {}).get("values")[0].get("value")
+    except:
+        return None
 
 # Function to retrieve data about the car
 def extract_car_data(link, json_data):
+    """
+    Key function. Receives JSON ads and extracts from it:
+        - car parameters (brand, model, fuel type, body, gearbox, mileage, etc.),
+        - price, date, description, seller,
+        - photos and location,
+        - saves HTML and photos to local folders,
+        - returns a dictionary with all this info.
+    :param link: Link to the ad
+    :param json_data: JSON data from the script tag
+    :return: Dictionary with car data
+    """
     advert = json_data.get("props", {}).get("pageProps", {}).get("advert", {})
 
     # BASIC INFORMATION
-    details = advert.get("details", {})
+    parameters = advert.get("parametersDict", {})
 
-    mark = next((i["value"] for i in details if i["key"] == "make"), None)
-    model = next((i["value"] for i in details if i["key"] == "model"), None)
-    version = next((i["value"] for i in details if i["key"] == "version"), None)
-    color = next((i["value"] for i in details if i["key"] == "color"), None)
-    door_count = next((i["value"] for i in details if i["key"] == "door_count"), None)
-    nr_seats = next((i["value"] for i in details if i["key"] == "nr_seats"), None)
-    year = next(((i["value"] for i in details if i["key"] == "year")), None)
-    generation = next((i["value"] for i in details if i["key"] == "generation"), None)
+    mark = parameters.get("make", {}).get("values")[0].get("label")
+    model = extract_param("model", parameters, True)
+    version = extract_param("version", parameters, True)
+    color = extract_param("color", parameters)
+    door_count = extract_param("door_count", parameters)
+    nr_seats = extract_param("nr_seats", parameters)
+    year = extract_param("year", parameters)
+    generation = extract_param("generation", parameters, True)
 
     # TECHNICAL SPECS
-    fuel_type = next((i["value"] for i in details if i["key"] == "fuel_type"), None)
-    engine_capacity = next((i["value"] for i in details if i["key"] == "engine_capacity"), None)
-    try:
-        engine_capacity = engine_capacity[:-4].replace(" ", "")
-    except:
-        pass
-    engine_power = next((i["value"] for i in details if i["key"] == "engine_power"), None)
-    engine_power = engine_power[:-3]
-    body_type = next((i["value"] for i in details if i["key"] == "body_type"), None)
-    gearbox = next((i["value"] for i in details if i["key"] == "gearbox"), None)
-    transmission = next((i["value"] for i in details if i["key"] == "transmission"), None)
-    urban_consumption1 = next((i["value"] for i in details if i["key"] == "urban_consumption"), None)
-    extra_urban_consumption1 = next((i["value"] for i in details if i["key"] == "extra_urban_consumption"),
-                                   None)
-    urban_consumption = extract_number(urban_consumption1) if urban_consumption1 else None
-    extra_urban_consumption = extract_number(extra_urban_consumption1) if extra_urban_consumption1 else None
-
-    mileage = next((i["value"] for i in details if i["key"] == "mileage"), None)
-    mileage = mileage[:-3].replace(" ", "")
+    fuel_type = extract_param("fuel_type", parameters, True)
+    engine_capacity = extract_param("engine_capacity", parameters)
+    engine_power = extract_param("engine_power", parameters)
+    body_type = extract_param("body_type", parameters, True)
+    gearbox = extract_param("gearbox", parameters, True)
+    transmission = extract_param("transmission", parameters, True)
+    extra_urban_consumption = extract_param("extra_urban_consumption", parameters)
+    urban_consumption = extract_param("urban_consumption", parameters)
+    mileage = extract_param("mileage", parameters)
 
     # CONDITION HISTORY
-    has_registration = next((i["value"] for i in details if i["key"] == "has_registration"), None)
-    has_registration = True if has_registration == "Tak" else False
+    if extract_param("registered", parameters) == "1":
+        has_registration = True
+    else:
+        has_registration = False
 
     # EQUIPMENT
     equipment = advert.get("equipment", {})
     equipment = json.dumps(equipment)
 
-    # PARAMETRS
+    # PARAMETERS
     parameters_dict = advert.get("parametersDict", {})
     parameters_dict = json.dumps(parameters_dict)
 
@@ -179,7 +253,7 @@ def extract_car_data(link, json_data):
     html_folder = urllib.parse.quote(link, safe='')
     html_path = os.path.join(base_folder_html, html_folder)
 
-    #Download photos
+    # Download photos
     photos = advert.get("images", {}).get("photos", [])
     photo_links = [photo.get("url") for photo in photos]
     folder_path = create_safe_folder_name(link)
@@ -202,6 +276,11 @@ def extract_car_data(link, json_data):
 
 # The function updates the Excel file while preserving the formats.
 def update_excel_with_styles(existing_file, updated_df):
+    """
+    Clears the contents of the Excel file, but preserves styles. Then writes the updated data.
+    :param existing_file: Path to the existing Excel file
+    :param updated_df: Updated DataFrame with data to write
+    """
     try:
         # Load an existing Excel file
         workbook = load_workbook(existing_file)
@@ -226,6 +305,21 @@ def update_excel_with_styles(existing_file, updated_df):
 
 # Function to retrieve information about machines
 def update_data(url, database_table, excel_table):
+    """
+    Step by step:
+        - Loads existing ad links from the DB.
+        - Parses HTML by the given url, finds all new ad links.
+        - For each new ad:
+        - Loads HTML.
+        - Saves HTML to car_htmls.
+        - Parses JSON from the script.
+        - Extracts data via extract_car_data.
+        - Updates the database (update_database).
+        - Prepares data for Excel.
+    :param url: URL to parse
+    :param database_table: Name of the database table to update
+    :param excel_table: Name of the Excel file to update
+    """
     # Load an existing table if it exists
     existing_links = get_all_car_links(database_table)
 
@@ -272,10 +366,13 @@ def update_data(url, database_table, excel_table):
             car_info = extract_car_data(link, json_data)
             update_database(car_info, "new_ads", database_table)
             filtered_dict = {key: car_info[key] for key in car_info if key in new_column_order}
-            filtered_dict["year"] = int(float(filtered_dict["year"]))
+            try: filtered_dict["year"] = int(float(filtered_dict["year"]))
+            except: pass
             filtered_dict["price"] = int(float(filtered_dict["price"]))
-            filtered_dict["mileage"] = int(filtered_dict["mileage"])
-            filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
+            try: filtered_dict["mileage"] = int(filtered_dict["mileage"])
+            except: pass
+            try: filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
+            except: pass
             filtered_dict["relevant"] = "yes"
             new_car_data.append(filtered_dict)
 
@@ -291,90 +388,51 @@ def task_special():
     database_table = "special_cars_info"
     excel_table = "special_cars_info.xlsx"
 
-    """MITSUBISHI LANCER"""
-    url = 'https://www.otomoto.pl/osobowe/mitsubishi/lancer?search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Mitsubishi Lancer ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """KIA RIO"""
-    url = 'https://www.otomoto.pl/osobowe/kia/rio?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Kia Rio ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """HONDA CIVIC"""
-    url = 'https://www.otomoto.pl/osobowe/honda/civic?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Ato%5D=30000&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Honda Civic ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """OPEL ASTRA"""
-    url = 'https://www.otomoto.pl/osobowe/opel/astra?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'Opel Astra ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """FORD FOCUS"""
-    url = 'https://www.otomoto.pl/osobowe/ford/focus?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'FORD FOCUS ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """CITROEN C5"""
-    url = 'https://www.otomoto.pl/osobowe/citroen/c5?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'CITROEN C5 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """RENAULT MEGANE"""
-    url = 'https://www.otomoto.pl/osobowe/renault/megane?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'RENAULT MEGANE ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """MAZDA 3 & 6"""
-    url = 'https://www.otomoto.pl/osobowe/mazda/3?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'MAZDA 3 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    url = 'https://www.otomoto.pl/osobowe/mazda/6?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'MAZDA 6 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """VOLKSWAGEN JETTA"""
-    url = 'https://www.otomoto.pl/osobowe/volkswagen/jetta?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'VOLKSWAGEN JETTA ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-    """SKODA OCTAVIA"""
-    url = 'https://www.otomoto.pl/osobowe/skoda/octavia?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=30000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
-    update_data(url, database_table, excel_table)
-    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'SKODA OCTAVIA ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
-
-
 
     """PEUGEOT 207"""
-    url = 'https://www.otomoto.pl/osobowe/peugeot/207?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=10000&search%5Bfilter_float_price%3Ato%5D=20000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/peugeot/207?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=7000&search%5Bfilter_float_price%3Ato%5D=12000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
         f.write(f'PEUGEOT 207 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
-    """PEUGEOT 308"""
-    url = 'https://www.otomoto.pl/osobowe/peugeot/308?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=10000&search%5Bfilter_float_price%3Ato%5D=20000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+
+    """PEUGEOT 206 & 207 & 208 & 307 & 308  up to 12000 zł"""
+    url = 'https://www.otomoto.pl/osobowe/peugeot/206--207--208--307--308?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_mileage%3Ato%5D=250000&search%5Bfilter_float_price%3Afrom%5D=6000&search%5Bfilter_float_price%3Ato%5D=12000&search%5Border%5D=created_at_first%3Adesc'
     update_data(url, database_table, excel_table)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
-        f.write(f'PEUGEOT 308 ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+        f.write(f'PEUGEOT 206 & 207 up to 10000 zł ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
 
+    """FIAT PUNTO"""
+    url = 'https://www.otomoto.pl/osobowe/fiat/grande-punto--punto--punto-evo?search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=7000&search%5Bfilter_float_price%3Ato%5D=13000&search%5Border%5D=created_at_first%3Adesc'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'FIAT PUNTO ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+
+    """RENAULT CLIO"""
+    url = 'https://www.otomoto.pl/osobowe/renault/clio?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_price%3Afrom%5D=7000&search%5Bfilter_float_price%3Ato%5D=13000&search%5Border%5D=created_at_first%3Adesc'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'RENAULT CLIO ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+
+    """OPEL ASTRA"""
+    url = 'https://www.otomoto.pl/osobowe/opel/astra?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_mileage%3Ato%5D=250000&search%5Bfilter_float_price%3Afrom%5D=6000&search%5Bfilter_float_price%3Ato%5D=12000&search%5Border%5D=created_at_first%3Adesc'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'OPEL ASTRA ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
+
+
+    """RENAULT MEGANE"""
+    url = 'https://www.otomoto.pl/osobowe/renault/megane?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_mileage%3Ato%5D=250000&search%5Bfilter_float_price%3Afrom%5D=6000&search%5Bfilter_float_price%3Ato%5D=12000&search%5Border%5D=created_at_first%3Adesc'
+    update_data(url, database_table, excel_table)
+    with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
+        f.write(f'RENAULT MEGANE ads were updated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')  # Add line break
 
 
 def task():
-    url = 'https://www.otomoto.pl/osobowe/seg-cabrio--seg-city-car--seg-combi--seg-compact--seg-coupe--seg-mini--seg-sedan/od-2010/dolnoslaskie?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_mileage%3Ato%5D=200000&search%5Bfilter_float_price%3Afrom%5D=15000&search%5Bfilter_float_price%3Ato%5D=25000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
+    url = 'https://www.otomoto.pl/osobowe/seg-cabrio--seg-city-car--seg-compact--seg-coupe--seg-sedan/od-2010?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_enum_fuel_type%5D=petrol&search%5Bfilter_float_mileage%3Ato%5D=250000&search%5Bfilter_float_price%3Afrom%5D=7000&search%5Bfilter_float_price%3Ato%5D=13000&search%5Border%5D=created_at_first%3Adesc&search%5Badvanced_search_expanded%5D=true'
     database_table = "cars_info"
     excel_table = "cars_info.xlsx"
     update_data(url, database_table, excel_table)

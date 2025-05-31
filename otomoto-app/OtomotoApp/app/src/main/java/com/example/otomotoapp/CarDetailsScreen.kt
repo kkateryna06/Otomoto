@@ -118,6 +118,7 @@ fun CarDetailsScreenPreview() {
     val carSpecs = CarSpecs(
         car_id = "6132407608",
         date = "2025-01-05 10:58:16",
+        sell_date = "2025-17-05 10:58:16",
         mark = "Honda",
         model = "Civic",
         version = "2.2i-CTDi DPF Sport",

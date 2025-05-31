@@ -3,6 +3,7 @@ package com.example.otomotoapp
 data class CarSpecs(
     val car_id: String,
     val date: String,
+    val sell_date: String,
     val mark: String,
     val model: String,
     val version: String?,

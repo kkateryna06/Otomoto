@@ -3,6 +3,13 @@ from psycopg2.sql import SQL, Identifier
 
 
 def update_database_car_relevant(car_id, sell_date, database_table):
+    """
+    Creates an SQL query and values to update the 'sell_date' for a specific car in the database.
+    :param car_id: Unique identifier of the car.
+    :param sell_date: Date when the car was marked as sold or inactive.
+    :param database_table: Name of the table in the database.
+    :return: SQL UPDATE query and values to update the database.
+    """
     insert_values = [sell_date, car_id]
     insert_car_relevant_query = SQL("""
     UPDATE {}
@@ -14,6 +21,12 @@ def update_database_car_relevant(car_id, sell_date, database_table):
 
 
 def update_database_car_info(car_data, database_table):
+    """
+    Creates an SQL INSERT query and values to insert a new car advertisement into the database.
+    :param car_data: Dictionary containing all fields of the car advertisement.
+    :param database_table: Name of the table in the database.
+    :return: SQL INSERT query and values to insert the car advertisement into the database.
+    """
     insert_values = [
         car_data['mark'], car_data['model'], car_data['version'], car_data['color'], car_data['door_count'],
         car_data['nr_seats'], car_data['year'], car_data['generation'], car_data['fuel_type'],
@@ -39,6 +52,13 @@ def update_database_car_info(car_data, database_table):
     return insert_car_info_query, insert_values
 
 def update_database(data, to_do, database_table):
+    """
+    Performs an update or insert operation in the PostgreSQL database
+    depending on the 'to_do' flag.
+    :param data: Data to be inserted or updated.
+    :param to_do: Flag to indicate whether the data should be inserted or updated.
+    :param database_table: Name of the database table.
+    """
 
     try:
         # Connecting to the database
@@ -88,6 +108,11 @@ def update_database(data, to_do, database_table):
 
 
 def get_all_car_links(database_table):
+    """
+    Retrieves all car advertisement links from the database table.
+    :param database_table: Name of the database table.
+    :return: List of car advertisement links.
+    """
     try:
         connection = psycopg2.connect(
             host="localhost",
@@ -114,6 +139,11 @@ def get_all_car_links(database_table):
 
 
 def get_all_car_links_for_relevant_check(database_table):
+    """
+    Retrieves links to car ads that are not marked as sold (i.e., where sell_date is NULL).
+    :param database_table: Name of the database table.
+    :return: List of links to check for relevance.
+    """
     try:
         connection = psycopg2.connect(
             host="localhost",

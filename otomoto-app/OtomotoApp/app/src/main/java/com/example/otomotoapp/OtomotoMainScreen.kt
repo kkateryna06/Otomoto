@@ -1,9 +1,15 @@
 package com.example.otomotoapp
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,14 +36,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.compose.AppTheme
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import kotlin.reflect.typeOf
 
 @Composable
 fun OtomotoMainScreen(viewModel: MainViewModel, navController: NavHostController) {
@@ -53,7 +70,6 @@ fun OtomotoMainScreen(viewModel: MainViewModel, navController: NavHostController
     }
     Column(modifier = Modifier.fillMaxSize()) {
 
-        Log.d("DEBUGER", "carList = $carList")
         TopAppBar(isSpecialCarEnabled, viewModel, navController)
         CarAd(navController, carList, isSpecialCarEnabled)
     }
@@ -71,11 +87,21 @@ fun CarAd(navController: NavHostController, adds: List<CarSpecs>, isSpecialCarEn
     }
 }
 
+fun getDaysSince(listingDate: String, soldDate: String?): Int {
+    val format = SimpleDateFormat("yyy-MM-dd", Locale.getDefault())
+
+    val startDate = format.parse(listingDate)
+    val endDate = soldDate?.let { format.parse(soldDate) } ?: Date()
+
+    val diff = endDate.time - startDate.time
+    return TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS).toInt()
+}
+
 @Composable
 fun AdItem(navController: NavHostController, carSpecs: CarSpecs, isSpecialCarEnabled: Boolean) {
     Card(
         modifier = Modifier
-            .height(370.dp)
+            .height(400.dp)
             .padding(8.dp)
             .clickable {
                 navController.navigate(
@@ -88,6 +114,20 @@ fun AdItem(navController: NavHostController, carSpecs: CarSpecs, isSpecialCarEna
     ) {
         Column()
         {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(color = if(carSpecs.sell_date.isNullOrBlank()) Color.Green else Color.Red)
+                )
+                Text(text = "${getDaysSince(carSpecs.date, carSpecs.sell_date)}")
+            }
+
+//            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+//                Text(text = carSpecs.date, style = TextStyle(fontSize = 7.sp))
+//                Text(text = carSpecs.sell_date, style = TextStyle(fontSize = 7.sp))
+//            }
             Image(
                 painter = painterResource(id = R.drawable.no_image),
                 contentDescription = "car photo"
@@ -170,6 +210,7 @@ fun OtomotoMainScreenPreview() {
             CarSpecs(
                 car_id = "6132407608",
                 date = "2025-01-05 10:58:16",
+                sell_date = "2025-17-05 10:58:16",
                 mark = "Honda",
                 model = "Civic",
                 version = "2.2i-CTDi DPF Sport",
@@ -198,6 +239,7 @@ fun OtomotoMainScreenPreview() {
             CarSpecs(
                 car_id = "6132407608",
                 date = "2025-01-05 10:58:16",
+                sell_date = "2025-17-05 10:58:16",
                 mark = "Honda",
                 model = "Civic",
                 version = "2.2i-CTDi DPF Sport",
@@ -226,6 +268,7 @@ fun OtomotoMainScreenPreview() {
             CarSpecs(
                 car_id = "6132407608",
                 date = "2025-01-05 10:58:16",
+                sell_date = "2025-17-05 10:58:16",
                 mark = "Honda",
                 model = "Civic",
                 version = "2.2i-CTDi DPF Sport",
@@ -254,6 +297,7 @@ fun OtomotoMainScreenPreview() {
             CarSpecs(
                 car_id = "6132407608",
                 date = "2025-01-05 10:58:16",
+                sell_date = "2025-17-05 10:58:16",
                 mark = "Honda",
                 model = "Civic",
                 version = "2.2i-CTDi DPF Sport",
