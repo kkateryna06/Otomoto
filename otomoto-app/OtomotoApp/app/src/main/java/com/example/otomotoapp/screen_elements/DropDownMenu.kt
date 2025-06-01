@@ -1,7 +1,6 @@
-package com.example.otomotoapp
+package com.example.otomotoapp.screen_elements
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.compose.AppTheme
-import org.w3c.dom.Text
+import com.example.otomotoapp.data.CarSpecs
+import com.example.otomotoapp.R
 
 @Composable
 fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, isDropDownMenuExpanded: Boolean = false, modifier: Modifier = Modifier) {

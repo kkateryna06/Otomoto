@@ -1,4 +1,4 @@
-package com.example.otomotoapp
+package com.example.otomotoapp.screen
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
@@ -15,29 +15,48 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.compose.AppTheme
+import com.example.otomotoapp.data.CarSpecs
+import com.example.otomotoapp.screen_elements.DropDownMenu
+import com.example.otomotoapp.MainViewModel
+import com.example.otomotoapp.R
+import com.example.otomotoapp.database.FavouriteCar
+import com.example.otomotoapp.database.FavouriteCarsViewModel
+import com.example.otomotoapp.screen_elements.TopAppBar
 
 @Composable
-fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnabled: Boolean, navController: NavHostController) {
+fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
+                     favCarsViewModel: FavouriteCarsViewModel, isSpecialCarEnabled: Boolean,
+                     navController: NavHostController) {
     val carSpecs by viewModel.getCarById(carId).observeAsState()
     val carPhotos by viewModel.carPhotosLiveData.observeAsState()
     val carPhoto = carPhotos?.get(carId)
+
+    val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
+    val isFavCar = favCarsList.contains(FavouriteCar(carId.toLong()))
+    
 
     LaunchedEffect(carId) {
         viewModel.getPhotoById(carId)
@@ -48,7 +67,7 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnable
         Column() {
             TopAppBar(isSpecialCarEnabled = isSpecialCarEnabled, viewModel = viewModel, navController = navController)
             if (carSpecs != null) {
-                CarDetails(carSpecs = carSpecs!!, carPhoto)
+                CarDetails(carSpecs = carSpecs!!, carPhoto, favCarsViewModel, isFavCar)
             }
         }
         if (carSpecs != null) {
@@ -60,7 +79,8 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel, isSpecialCarEnable
 }
 
 @Composable
-fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?) {
+fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?, favCarsViewModel: FavouriteCarsViewModel,
+               isFavCar: Boolean) {
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(20.dp)
@@ -80,10 +100,27 @@ fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?) {
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "${carSpecs.mark} ${carSpecs.model} ${carSpecs.version ?: ""} (${carSpecs.year})",
-            style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold
-        )
+        Row {
+            Text(
+                text = "${carSpecs.mark} ${carSpecs.model} ${carSpecs.version ?: ""} (${carSpecs.year})",
+                style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = {
+                if (isFavCar) {
+                    favCarsViewModel.deleteFavCar(carSpecs.car_id.toLong())
+                }
+                else {
+                    favCarsViewModel.addFavCar(carSpecs.car_id.toLong())
+                }
+            }) {
+                Icon(
+                    painter = painterResource(if(isFavCar) R.drawable.favourite else R.drawable.favourite_border),
+                    contentDescription = null
+                )
+            }
+        }
+
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -145,11 +182,19 @@ fun CarDetailsScreenPreview() {
         html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html"
     )
 
+    val imageBitmap = ImageBitmap.imageResource(R.drawable.no_image)
+    val bitmap: Bitmap = imageBitmap.asAndroidBitmap()
+
     AppTheme(dynamicColor = false) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column() {
 //                TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
-                //CarDetails(carSpecs = carSpecs)
+                CarDetails(
+                    carSpecs = carSpecs,
+                    carPhoto = bitmap,
+                    favCarsViewModel = viewModel(),
+                    isFavCar = true,
+                )
             }
             BottomAppBar(carSpecs.price, carSpecs.link, Modifier.align(Alignment.BottomCenter))
         }

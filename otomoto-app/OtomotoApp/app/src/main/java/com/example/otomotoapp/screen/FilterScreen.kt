@@ -1,4 +1,4 @@
-package com.example.otomotoapp
+package com.example.otomotoapp.screen
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.compose.AppTheme
 import androidx.compose.foundation.layout.Box
 
 import androidx.compose.foundation.layout.Row
@@ -52,6 +50,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.otomotoapp.data.FilterData
+import com.example.otomotoapp.MainViewModel
+import com.example.otomotoapp.data.MinMaxResponse
+import com.example.otomotoapp.R
+import com.example.otomotoapp.Screen
+import com.example.otomotoapp.data.UniqueValueResponse
 
 fun getMinMax(data: MinMaxResponse?): Pair<Float, Float> =
     (data?.min_max_values?.getOrNull(0)?.toString()?.toFloatOrNull() ?: 0f) to

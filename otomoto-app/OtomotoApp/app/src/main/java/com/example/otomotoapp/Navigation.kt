@@ -7,15 +7,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.otomotoapp.database.FavouriteCarsViewModel
+import com.example.otomotoapp.screen.CarDetailsScreen
+import com.example.otomotoapp.screen.FilterScreen
+import com.example.otomotoapp.screen.OtomotoMainScreen
 
 @Composable
 fun Navigation() {
     val navController = rememberNavController()
     val viewModel: MainViewModel = viewModel()
+    val favCarsViewModel: FavouriteCarsViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Screen.MainScreen.route) {
         composable(route = Screen.MainScreen.route) {
-            OtomotoMainScreen(navController = navController, viewModel = viewModel)
+            OtomotoMainScreen(navController = navController,
+                viewModel = viewModel, favCarsViewModel = favCarsViewModel)
         }
         composable(
             route = Screen.CarDetailsScreen.route + "/{car_id}/{isSpecialEnabled}",
@@ -32,7 +38,9 @@ fun Navigation() {
             val carId = entry.arguments?.getString("car_id")
             val isSpecialCarEnabled = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
             if (carId != null) {
-                CarDetailsScreen(carId = carId.toString(), viewModel = viewModel, isSpecialCarEnabled = isSpecialCarEnabled, navController = navController)
+                CarDetailsScreen(carId = carId.toString(), viewModel = viewModel,
+                    favCarsViewModel = favCarsViewModel, isSpecialCarEnabled = isSpecialCarEnabled,
+                    navController = navController)
             } else {}
         }
         composable(

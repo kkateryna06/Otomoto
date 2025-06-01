@@ -1,4 +1,4 @@
-package com.example.otomotoapp
+package com.example.otomotoapp.data
 
 data class CarSpecs(
     val car_id: String,

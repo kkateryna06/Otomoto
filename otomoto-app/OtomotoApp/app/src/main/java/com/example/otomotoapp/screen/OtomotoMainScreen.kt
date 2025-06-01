@@ -1,13 +1,9 @@
-package com.example.otomotoapp
+package com.example.otomotoapp.screen
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,10 +22,12 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -38,28 +36,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.compose.AppTheme
+import com.example.otomotoapp.data.CarSpecs
+import com.example.otomotoapp.MainViewModel
+import com.example.otomotoapp.R
+import com.example.otomotoapp.Screen
+import com.example.otomotoapp.database.FavouriteCar
+import com.example.otomotoapp.database.FavouriteCarsViewModel
+import com.example.otomotoapp.screen_elements.TopAppBar
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.reflect.typeOf
 
 @Composable
-fun OtomotoMainScreen(viewModel: MainViewModel, navController: NavHostController) {
+fun OtomotoMainScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCarsViewModel,
+                      navController: NavHostController) {
     val carList by viewModel.carList.observeAsState(emptyList())
     val errorMessage by viewModel.errorMessage.observeAsState("")
     val isSpecialCarEnabled by viewModel.isSpecialCarEnabled.observeAsState(false)
+
+    val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
+    Log.d("DEBUG", "$favCarsList")
 
     LaunchedEffect(Unit) {
         viewModel.fetchCars()
@@ -71,17 +75,21 @@ fun OtomotoMainScreen(viewModel: MainViewModel, navController: NavHostController
     Column(modifier = Modifier.fillMaxSize()) {
 
         TopAppBar(isSpecialCarEnabled, viewModel, navController)
-        CarAd(navController, carList, isSpecialCarEnabled)
+        CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel)
     }
 }
 
 @Composable
-fun CarAd(navController: NavHostController, adds: List<CarSpecs>, isSpecialCarEnabled: Boolean) {
+fun CarAd(
+    navController: NavHostController, adds: List<CarSpecs>,
+    isSpecialCarEnabled: Boolean, favCarsList: List<FavouriteCar>,
+    favCarsViewModel: FavouriteCarsViewModel) {
     Row{
         LazyVerticalGrid(GridCells.Fixed(2)) {
             items(adds) {
                 item ->
-                AdItem(navController, item, isSpecialCarEnabled)
+                val isFavCar = favCarsList.contains(FavouriteCar(item.car_id.toLong()))
+                AdItem(navController, item, isSpecialCarEnabled, isFavCar, favCarsViewModel)
             }
         }
     }
@@ -98,7 +106,10 @@ fun getDaysSince(listingDate: String, soldDate: String?): Int {
 }
 
 @Composable
-fun AdItem(navController: NavHostController, carSpecs: CarSpecs, isSpecialCarEnabled: Boolean) {
+fun AdItem(
+    navController: NavHostController, carSpecs: CarSpecs, isSpecialCarEnabled: Boolean,
+    isFavCar: Boolean, favCarsViewModel: FavouriteCarsViewModel) {
+
     Card(
         modifier = Modifier
             .height(400.dp)
@@ -114,14 +125,33 @@ fun AdItem(navController: NavHostController, carSpecs: CarSpecs, isSpecialCarEna
     ) {
         Column()
         {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 10.dp)) {
                 Box(
                     modifier = Modifier
                         .size(10.dp)
                         .clip(RoundedCornerShape(50.dp))
-                        .background(color = if(carSpecs.sell_date.isNullOrBlank()) Color.Green else Color.Red)
+                        .background(
+                            color = if(carSpecs.sell_date.isNullOrBlank()) Color.Green else Color.Red
+                        )
                 )
+                Spacer(modifier = Modifier.width(5.dp))
                 Text(text = "${getDaysSince(carSpecs.date, carSpecs.sell_date)}")
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = {
+                    if (isFavCar) {
+                        favCarsViewModel.deleteFavCar(carSpecs.car_id.toLong())
+                    }
+                    else {
+                        favCarsViewModel.addFavCar(carSpecs.car_id.toLong())
+                    }
+                }) {
+                    Icon(
+                        painter = painterResource(if(isFavCar) R.drawable.favourite else R.drawable.favourite_border),
+                        contentDescription = null
+                    )
+                }
+
             }
 
 //            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -237,7 +267,7 @@ fun OtomotoMainScreenPreview() {
                 html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html"
             ),
             CarSpecs(
-                car_id = "6132407608",
+                car_id = "613240708",
                 date = "2025-01-05 10:58:16",
                 sell_date = "2025-17-05 10:58:16",
                 mark = "Honda",
@@ -295,7 +325,7 @@ fun OtomotoMainScreenPreview() {
                 html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html"
             ),
             CarSpecs(
-                car_id = "6132407608",
+                car_id = "613247608",
                 date = "2025-01-05 10:58:16",
                 sell_date = "2025-17-05 10:58:16",
                 mark = "Honda",
@@ -329,7 +359,7 @@ fun OtomotoMainScreenPreview() {
         Column(modifier = Modifier.fillMaxSize()) {
 
 //            TopAppBar(false, fakeViewModel)
-            CarAd(navController, carList, false)
+//            CarAd(navController, carList, false, mutableStateOf(listOf(FavouriteCar(613247608L))), viewModel())
         }
     }
 }

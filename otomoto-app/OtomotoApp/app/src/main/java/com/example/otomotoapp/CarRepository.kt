@@ -2,9 +2,9 @@ package com.example.otomotoapp
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import okhttp3.ResponseBody
-import retrofit2.Response
-import java.math.BigInteger
+import com.example.otomotoapp.data.CarSpecs
+import com.example.otomotoapp.data.MinMaxResponse
+import com.example.otomotoapp.data.UniqueValueResponse
 
 class CarRepository {
 

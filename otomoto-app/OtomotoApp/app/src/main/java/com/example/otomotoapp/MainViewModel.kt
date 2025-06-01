@@ -6,6 +6,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.otomotoapp.data.CarSpecs
+import com.example.otomotoapp.data.FilterData
+import com.example.otomotoapp.data.MinMaxResponse
+import com.example.otomotoapp.data.UniqueValueResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

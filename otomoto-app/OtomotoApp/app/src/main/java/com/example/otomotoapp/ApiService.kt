@@ -1,5 +1,8 @@
 package com.example.otomotoapp
 
+import com.example.otomotoapp.data.CarSpecs
+import com.example.otomotoapp.data.MinMaxResponse
+import com.example.otomotoapp.data.UniqueValueResponse
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.GET

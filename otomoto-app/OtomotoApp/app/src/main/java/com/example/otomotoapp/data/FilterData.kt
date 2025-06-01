@@ -1,4 +1,4 @@
-package com.example.otomotoapp
+package com.example.otomotoapp.data
 
 data class FilterData(
     val markList: List<String> = emptyList(),
