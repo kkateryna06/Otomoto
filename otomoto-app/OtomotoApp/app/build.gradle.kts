@@ -89,4 +89,9 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
+    // Google maps
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    val mapsComposeVersion = "4.4.1"
+    implementation("com.google.maps.android:maps-compose:$mapsComposeVersion")
+
 }

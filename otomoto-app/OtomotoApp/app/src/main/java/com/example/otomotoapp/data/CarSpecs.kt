@@ -28,7 +28,14 @@ data class CarSpecs(
 //    val parametersDict: JSONObject,
     val description: String,
     val link: String,
-//    val location: JSONObject,
+    val location: Location,
     val photo_path: String,
     val html_path: String,
     )
+
+data class Location(
+    val zoom: Int,
+    val radius: Int,
+    val latitude: Double,
+    val longitude: Double
+)

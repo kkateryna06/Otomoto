@@ -1,5 +1,8 @@
 package com.example.otomotoapp.screen_elements
 
+import android.content.Context
+import android.location.Geocoder
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,6 +32,14 @@ import androidx.compose.ui.unit.dp
 import com.example.compose.AppTheme
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.R
+import com.example.otomotoapp.data.Location
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
 fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, isDropDownMenuExpanded: Boolean = false, modifier: Modifier = Modifier) {
@@ -90,6 +103,9 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
             Text(text = carSpecs.description)
         }
     }
+    if (textMenu == "Location") {
+        CarLocation(carSpecs)
+    }
 }
 
 @Composable
@@ -105,6 +121,50 @@ fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
     }
     Row(modifier = Modifier.fillMaxWidth().height(1.dp)
         .background(color = MaterialTheme.colorScheme.primaryContainer)) {  }
+}
+
+@Composable
+fun CarLocation(carSpecs: CarSpecs) {
+    val latlngPosition = LatLng(carSpecs.location.latitude, carSpecs.location.longitude)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(latlngPosition, carSpecs.location.zoom.toFloat())
+    }
+    val context = LocalContext.current
+
+    Column {
+        Text(getAddressFromLatLng(context, latlngPosition))
+        GoogleMap(
+            onMapClick = {},
+            cameraPositionState = cameraPositionState,
+            modifier = Modifier.fillMaxWidth().height(400.dp)
+        ) {
+            Marker(state = MarkerState(
+                position = latlngPosition
+            )
+            )
+            Circle(
+                center = latlngPosition,
+                radius = carSpecs.location.radius.toDouble(),
+                fillColor = Color.Gray.copy(alpha = 0.2f),
+                strokeColor = Color.Transparent
+            )
+        }
+    }
+}
+
+fun getAddressFromLatLng(context: Context, position: LatLng): String {
+    val address = Geocoder(context)
+        .getFromLocation(position.latitude, position.longitude,1 )?.firstOrNull()
+    Log.d("DEBUG", "$address")
+    return if (address?.locality != null) {
+        "${address.locality}, ${address.countryName}"
+    }
+    else if (address?.adminArea != null) {
+        "${address.adminArea}, ${address.countryName}"
+    }
+    else {
+        "Invalid location"
+    }
 }
 
 @Preview(showBackground = true)
@@ -137,7 +197,8 @@ fun DropDownMenuPreview() {
         description = "Honda Civic VIII Rok produkcji: 2006 Przebieg: 214386 km Bezwypadkowy Pochodzenie: samochód kupiony w Niemczech od pierwszego właściciela, pierwszy właściciel w Polsce Samochód z udokumentowaną historią serwisową Wyposażenie (wybrane elementy): - Silnik: 2.2 i-CDTi (140 KM, 340 Nm) - Skrzynia Manualna 6 biegowa - Napęd na przednią oś - Rozrząd na łańcuchu - koła aluminiowe 17-calowe oryginalne z salonu - Lakier czarny perłowy - Tapicerka materiałowa - Wykończenie wnętrza plastik + aluminium - Fotele z możliwością regulacji - Kanapa z dostępem do przestrzeni załadunkowej i podłokietnikiem - Kierownica multimedialna obszyta skórą - Klimatyzacja automatyczna jednostrefowa - Światła przeciwmgłowe przednie i tylne - Tempomat - Czujnik zmierzchu - Czujnik deszczu - Elektrycznie regulowane lusterka - Elektryczne szyby przednie i tylne - system Isofix - wentylowany schowek - Radio na płytę - System Honda komputera pokładowego - lusterka boczne składane + podgrzewane - System ściemniania ekranu podczas nocnej jazdy - Tylne czujniki parkowania Samochód osobiście przywiozłem od pierwszego właściciela w Niemczech w roku 2018 i jestem pierwszym właścicielem w Polsce. Auto było przeze mnie użytkowane od 2018 roku do chwili obecnej. Podczas zakupu samochodu przebieg wynosił 167 tysięcy , na chwilę obecną przebieg samochodu to 214 tysięcy. Obecnie auto posiada na sobie opony z roku 2022 z dużą ilością bieżnika, auto jest ubezpieczone do roku 2025 do października. Przegląd Techniczny robiony był w listopadzie 2024. Stan samochodu uważam na bardzo dobry bez wkładu finansowego. * Regularnie wymieniałem olej 5w-30 (1 raz w roku max do 10 tysięcy km) * Co roku wymieniane były filtr (olejowy, kabinowy, paliwa, powietrza) * Olej w skrzyni biegów wymieniałem 2 razy podczas swojego użytkowania * Klocki hamulcowe zmieniane były 2 razy * Tarcze hamulcowe zmieniane były 2 razy * Akumulator wymieniony został w roku 2023 * Samochód posiada wykupione ubezpieczenie OC do 10.2025 * Samochód posiada aktualny przegląd techniczny do 09.2025 W cenie zawarte jest: * 4 sztuki opon letnich Viking, zakupionych przeze mnie w roku 2024 * Koło dojazdowe * Transmiter do puszczania muzyki z telefonu Powodem sprzedaży jest zmiana samochodu na auto dostawcze. Na prośbę kupującego istnieje możliwość sprawdzenia stanu technicznego samochodu w dowolnie wybranym serwisie na terenie Świnoujścia Lokalizacja: Zachodniopomorskie, Świnoujście Szczegóły udzielam telefoniczne pod nr tel.  Marcel Kopaczewski.",
         link = "https://www.otomoto.pl/osobowe/oferta/honda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
         photo_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_photos\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
-        html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html"
+        html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
+        location = Location(12,1500,50.47625,17.33254)
     )
 
 
