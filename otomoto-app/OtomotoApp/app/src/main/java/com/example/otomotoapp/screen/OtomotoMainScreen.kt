@@ -73,9 +73,9 @@ fun OtomotoMainScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCarsV
     if (errorMessage?.isNotEmpty() == true) {
         Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) { Text(text = errorMessage!!, color = Color.Red) }
     }
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = 150.dp)) {
 
-        TopAppBar(isSpecialCarEnabled, viewModel, navController)
+//        TopAppBar(isSpecialCarEnabled, viewModel, navController)
         CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel)
     }
 }

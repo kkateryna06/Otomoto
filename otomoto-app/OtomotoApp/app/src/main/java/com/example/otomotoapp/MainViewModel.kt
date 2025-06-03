@@ -10,6 +10,7 @@ import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.data.FilterData
 import com.example.otomotoapp.data.MinMaxResponse
 import com.example.otomotoapp.data.UniqueValueResponse
+import com.example.otomotoapp.database.FavouriteCar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -221,4 +222,26 @@ open class MainViewModel: ViewModel() {
         }
         return  minMaxValuesLiveData
     }
+
+
+    private val _favouriteCarsSpecsList = MutableLiveData<List<CarSpecs>>()
+    val favouriteCarsSpecsList: LiveData<List<CarSpecs>> = _favouriteCarsSpecsList
+
+    fun fetchFavouriteCarsSpecs(
+        favouriteCarsIdList: List<FavouriteCar>,
+        isSpecialCarsEnabled: Boolean
+    ) {
+        viewModelScope.launch {
+            val result = favouriteCarsIdList.mapNotNull { favCar ->
+                try {
+                    repository.getCarById(favCar.id.toString(), isSpecialCarsEnabled)
+                } catch (e: Exception) {
+                    Log.e("FETCH_ERROR", "Error loading car ${favCar.id}: ${e.message}")
+                    null
+                }
+            }
+            _favouriteCarsSpecsList.value = result
+        }
+    }
+
 }

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.compose.AppTheme
+import com.example.otomotoapp.AppBarsViewModel
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.screen_elements.DropDownMenu
 import com.example.otomotoapp.MainViewModel
@@ -57,7 +58,8 @@ import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
 fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
-                     favCarsViewModel: FavouriteCarsViewModel, isSpecialCarEnabled: Boolean,
+                     favCarsViewModel: FavouriteCarsViewModel,
+                     appBarsViewModel: AppBarsViewModel, isSpecialCarEnabled: Boolean,
                      navController: NavHostController) {
     val carSpecs by viewModel.getCarById(carId).observeAsState()
     val carPhotos by viewModel.carPhotosLiveData.observeAsState()
@@ -65,24 +67,23 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
 
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
     val isFavCar = favCarsList.contains(FavouriteCar(carId.toLong()))
-    
+
 
     LaunchedEffect(carId) {
         viewModel.getPhotoById(carId)
     }
-    println(carPhoto)
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column() {
             TopAppBar(isSpecialCarEnabled = isSpecialCarEnabled, viewModel = viewModel, navController = navController)
             if (carSpecs != null) {
+                appBarsViewModel.updateBottomInfo(
+                    link = carSpecs!!.link,
+                    price = carSpecs!!.price
+                )
                 CarDetails(carSpecs = carSpecs!!, carPhoto, favCarsViewModel, isFavCar)
             }
-        }
-        if (carSpecs != null) {
-            BottomAppBar(carSpecs!!.price, carSpecs!!.link, Modifier.align(Alignment.BottomCenter))
-        } else {
-            BottomAppBar(0, "")
         }
     }
 }
@@ -142,22 +143,6 @@ fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?, favCarsViewModel: Favourit
         DropDownMenu(carSpecs = carSpecs, textMenu = "Location", isDropDownMenuExpanded = true)
 
         Spacer(modifier = Modifier.height(50.dp))
-    }
-}
-
-@Composable
-fun BottomAppBar(carPrice: Int, carLink: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f))
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
-        ) {
-        Button(onClick = {}) { 
-            Text(text = "View in Otomoto")
-        }
-        Text(text = "$carPrice PLN", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
     }
 }
 

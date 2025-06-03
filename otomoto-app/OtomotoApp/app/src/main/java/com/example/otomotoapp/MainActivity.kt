@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         Graph.provide(context = this)
         setContent {
             AppTheme(dynamicColor = false) {
-                Navigation()
+                OtomotoApp()
             }
         }
     }

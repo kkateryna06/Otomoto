@@ -14,4 +14,5 @@ sealed class Screen(val route: String) {
             return "$route/$isSpecialEnabled"
         }
     }
+    object FavouriteCarsScreen : Screen("favourite_cars_screen")
 }

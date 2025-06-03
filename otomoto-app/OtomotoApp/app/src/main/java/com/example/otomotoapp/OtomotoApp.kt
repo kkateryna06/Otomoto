@@ -1,44 +1,44 @@
 package com.example.otomotoapp
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
+import com.example.otomotoapp.screen_elements.BottomBar2
+import com.example.otomotoapp.screen_elements.SideBar
+import com.example.otomotoapp.screen_elements.TopBar2
+import kotlinx.coroutines.launch
 
 @Composable
-fun aaa() {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "jfaaaaaaaaaaaaaaaajfaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaahbdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaahbd",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 40.dp), // отступ справа под иконку
-        )
-        Icon(
-            painter = painterResource(R.drawable.engine),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp) // немного отступов от краёв
-        )
+fun OtomotoApp() {
+    val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+
+    val appBarsViewModel: AppBarsViewModel = viewModel()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = { SideBar(navController) }
+    ) {
+        Scaffold(
+            topBar = {
+                TopBar2(
+                    navController = navController,
+                    onMenuClick = {
+                        scope.launch { drawerState.open() }
+                    }
+                )
+            },
+            bottomBar = { BottomBar2(appBarsViewModel) }
+        ) { padding ->
+            Navigation(Modifier.padding(padding), navController, appBarsViewModel)
+        }
     }
 }
-
-
-
-@Preview(showBackground = true)
-@Composable
-fun PrevAA() {
-    aaa()
-}
-
