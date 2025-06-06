@@ -36,8 +36,4 @@ class FavouriteCarsViewModel: ViewModel() {
             favouriteCarsRepository.deleteFavouriteCar(id)
         }
     }
-
-    fun isFavCar(id: Long): Boolean {
-        return favouriteCars.value.contains(FavouriteCar(id))
-    }
 }

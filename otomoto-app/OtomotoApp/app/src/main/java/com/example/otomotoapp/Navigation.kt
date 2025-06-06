@@ -2,27 +2,30 @@ package com.example.otomotoapp
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.otomotoapp.database.FavouriteCarsViewModel
-import com.example.otomotoapp.screen.CarDetailsScreen
-import com.example.otomotoapp.screen.FilterScreen
-import com.example.otomotoapp.screen.OtomotoMainScreen
+import com.example.otomotoapp.screens.CarDetailsScreen
+import com.example.otomotoapp.screens.FavouriteCarsScreen
+import com.example.otomotoapp.screens.FilterScreen
+import com.example.otomotoapp.screens.OtomotoMainScreen
 
 @Composable
-fun Navigation() {
-    val navController = rememberNavController()
+fun Navigation(navController: NavHostController, appBarsViewModel: AppBarsViewModel) {
     val viewModel: MainViewModel = viewModel()
     val favCarsViewModel: FavouriteCarsViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Screen.MainScreen.route) {
+
         composable(route = Screen.MainScreen.route) {
             OtomotoMainScreen(navController = navController,
                 viewModel = viewModel, favCarsViewModel = favCarsViewModel)
+            viewModel.setCurrentScreen(Screen.MainScreen)
         }
+
         composable(
             route = Screen.CarDetailsScreen.route + "/{car_id}/{isSpecialEnabled}",
             arguments = listOf(
@@ -38,11 +41,13 @@ fun Navigation() {
             val carId = entry.arguments?.getString("car_id")
             val isSpecialCarEnabled = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
             if (carId != null) {
+                viewModel.setCurrentScreen(Screen.CarDetailsScreen)
                 CarDetailsScreen(carId = carId.toString(), viewModel = viewModel,
                     favCarsViewModel = favCarsViewModel, isSpecialCarEnabled = isSpecialCarEnabled,
-                    navController = navController)
+                    navController = navController, appBarsViewModel = appBarsViewModel)
             } else {}
         }
+
         composable(
             route = Screen.FilterScreen.route + "/{isSpecialEnabled}",
             arguments = listOf(
@@ -53,7 +58,19 @@ fun Navigation() {
             )
         ) { entry ->
             val isSpecialEnables = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
+            viewModel.setCurrentScreen(Screen.FilterScreen)
             FilterScreen(isSpecialEnabled = isSpecialEnables, viewModel = viewModel, navController = navController)
+        }
+
+        composable(
+            route = Screen.FavouriteCarsScreen.route
+        ) {
+            viewModel.setCurrentScreen(Screen.FavouriteCarsScreen)
+            FavouriteCarsScreen(
+                viewModel = viewModel,
+                favCarsViewModel = favCarsViewModel,
+                navController = navController
+            )
         }
     }
 }

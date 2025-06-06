@@ -1,12 +1,9 @@
-package com.example.otomotoapp.screen
+package com.example.otomotoapp.screens
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -36,9 +31,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.compose.AppTheme
+import com.example.otomotoapp.AppBarsViewModel
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.screen_elements.DropDownMenu
 import com.example.otomotoapp.MainViewModel
@@ -46,18 +41,11 @@ import com.example.otomotoapp.R
 import com.example.otomotoapp.data.Location
 import com.example.otomotoapp.database.FavouriteCar
 import com.example.otomotoapp.database.FavouriteCarsViewModel
-import com.example.otomotoapp.screen_elements.TopAppBar
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Circle
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
 fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
-                     favCarsViewModel: FavouriteCarsViewModel, isSpecialCarEnabled: Boolean,
+                     favCarsViewModel: FavouriteCarsViewModel,
+                     appBarsViewModel: AppBarsViewModel, isSpecialCarEnabled: Boolean,
                      navController: NavHostController) {
     val carSpecs by viewModel.getCarById(carId).observeAsState()
     val carPhotos by viewModel.carPhotosLiveData.observeAsState()
@@ -65,24 +53,20 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
 
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
     val isFavCar = favCarsList.contains(FavouriteCar(carId.toLong()))
-    
+
 
     LaunchedEffect(carId) {
         viewModel.getPhotoById(carId)
     }
-    println(carPhoto)
+
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column() {
-            TopAppBar(isSpecialCarEnabled = isSpecialCarEnabled, viewModel = viewModel, navController = navController)
-            if (carSpecs != null) {
-                CarDetails(carSpecs = carSpecs!!, carPhoto, favCarsViewModel, isFavCar)
-            }
-        }
         if (carSpecs != null) {
-            BottomAppBar(carSpecs!!.price, carSpecs!!.link, Modifier.align(Alignment.BottomCenter))
-        } else {
-            BottomAppBar(0, "")
+            appBarsViewModel.updateBottomInfo(
+                link = carSpecs!!.link,
+                price = carSpecs!!.price
+            )
+            CarDetails(carSpecs = carSpecs!!, carPhoto, favCarsViewModel, isFavCar)
         }
     }
 }
@@ -92,7 +76,7 @@ fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?, favCarsViewModel: Favourit
                isFavCar: Boolean) {
     Column(modifier = Modifier
         .fillMaxSize()
-        .padding(20.dp)
+        .padding(horizontal = 20.dp)
         .verticalScroll(rememberScrollState())
     ) {
         if (carPhoto != null) {
@@ -140,24 +124,6 @@ fun CarDetails(carSpecs: CarSpecs, carPhoto: Bitmap?, favCarsViewModel: Favourit
         DropDownMenu(carSpecs = carSpecs, textMenu = "Description")
 
         DropDownMenu(carSpecs = carSpecs, textMenu = "Location", isDropDownMenuExpanded = true)
-
-        Spacer(modifier = Modifier.height(50.dp))
-    }
-}
-
-@Composable
-fun BottomAppBar(carPrice: Int, carLink: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f))
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
-        ) {
-        Button(onClick = {}) { 
-            Text(text = "View in Otomoto")
-        }
-        Text(text = "$carPrice PLN", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
     }
 }
 

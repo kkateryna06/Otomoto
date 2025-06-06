@@ -2,7 +2,6 @@ package com.example.otomotoapp.screen_elements
 
 import android.content.Context
 import android.location.Geocoder
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -155,7 +154,6 @@ fun CarLocation(carSpecs: CarSpecs) {
 fun getAddressFromLatLng(context: Context, position: LatLng): String {
     val address = Geocoder(context)
         .getFromLocation(position.latitude, position.longitude,1 )?.firstOrNull()
-    Log.d("DEBUG", "$address")
     return if (address?.locality != null) {
         "${address.locality}, ${address.countryName}"
     }

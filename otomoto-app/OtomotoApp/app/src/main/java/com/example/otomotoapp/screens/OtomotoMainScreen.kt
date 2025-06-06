@@ -1,6 +1,5 @@
-package com.example.otomotoapp.screen
+package com.example.otomotoapp.screens
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,7 +49,6 @@ import com.example.otomotoapp.Screen
 import com.example.otomotoapp.data.Location
 import com.example.otomotoapp.database.FavouriteCar
 import com.example.otomotoapp.database.FavouriteCarsViewModel
-import com.example.otomotoapp.screen_elements.TopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,7 +62,6 @@ fun OtomotoMainScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCarsV
     val isSpecialCarEnabled by viewModel.isSpecialCarEnabled.observeAsState(false)
 
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
-    Log.d("DEBUG", "$favCarsList")
 
     LaunchedEffect(Unit) {
         viewModel.fetchCars()
@@ -75,7 +72,7 @@ fun OtomotoMainScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCarsV
     }
     Column(modifier = Modifier.fillMaxSize()) {
 
-        TopAppBar(isSpecialCarEnabled, viewModel, navController)
+//        TopAppBar(isSpecialCarEnabled, viewModel, navController)
         CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel)
     }
 }
