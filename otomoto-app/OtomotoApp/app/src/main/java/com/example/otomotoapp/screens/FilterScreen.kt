@@ -1,4 +1,4 @@
-package com.example.otomotoapp.screen
+package com.example.otomotoapp.screens
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -45,7 +45,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
@@ -54,7 +53,6 @@ import com.example.otomotoapp.data.FilterData
 import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.data.MinMaxResponse
 import com.example.otomotoapp.R
-import com.example.otomotoapp.Screen
 import com.example.otomotoapp.data.UniqueValueResponse
 
 fun getMinMax(data: MinMaxResponse?): Pair<Float, Float> =
@@ -151,21 +149,11 @@ fun test(filterData: FilterData,
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(color = MaterialTheme.colorScheme.primaryContainer)
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "Filters", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-            }
-
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 Button(onClick = { viewModel.resetUserFilters() }) {
                     Text("Clear filters")
@@ -320,8 +308,6 @@ fun test(filterData: FilterData,
                 )
                 Spacer(modifier = Modifier.height(25.dp))
             }
-
-            BottomFilterBar(navController = navController)
         }
     }
 }
@@ -341,7 +327,7 @@ fun PriceRangeSlider(
                 minPriceSlider.value = it.start; maxPriceSlider.value = it.endInclusive
                 viewModel.updateFilterData { copy(minPrice = minPriceSlider.value) }
                 viewModel.updateFilterData { copy(maxPrice = maxPriceSlider.value) }
-                Log.d("DEBUG", "$userFilterData")
+                Log.d("DEBUG", "filters: $userFilterData")
                 },
 
             valueRange = 0f..maxBasePrice
@@ -517,20 +503,6 @@ fun RangeFilter(minValue: MutableState<String>, maxValue: MutableState<String>, 
                 textStyle = TextStyle(fontSize = 15.sp),
                 modifier = Modifier.height(50.dp)
             )
-        }
-    }
-}
-
-@Composable
-fun BottomFilterBar(navController: NavHostController, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(color = MaterialTheme.colorScheme.primaryContainer)
-            .padding(16.dp)
-    ) {
-        Button(onClick = { navController.navigate(Screen.MainScreen.route) }) {
-            Text(text = "Apply Filters")
         }
     }
 }

@@ -16,6 +16,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 open class MainViewModel: ViewModel() {
+    // Screens
+    private val _currentScreen = MutableLiveData<Screen>(Screen.MainScreen)
+    val currentScreen: LiveData<Screen> = _currentScreen
+
+    fun setCurrentScreen(screen: Screen) {
+        _currentScreen.value = screen
+    }
+
 
     private val repository = CarRepository()
 
@@ -108,21 +116,17 @@ open class MainViewModel: ViewModel() {
     }
 
     fun addToFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
-        Log.d("DEBUG", "userFilter data before add: ${userFilterData.value?.bodyTypeList}")
         updateFilterData {
             val updatedList = selector() + item
             updater(updatedList)
         }
-        Log.d("DEBUG", "userFilter data after add: ${userFilterData.value?.bodyTypeList}")
     }
 
     fun removeFromFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
-        Log.d("DEBUG", "userFilter data before remove: ${userFilterData.value?.bodyTypeList}")
         updateFilterData {
             val updatedList = selector() - item
             updater(updatedList)
         }
-        Log.d("DEBUG", "userFilter data after remove: ${userFilterData.value?.bodyTypeList}")
     }
 
 

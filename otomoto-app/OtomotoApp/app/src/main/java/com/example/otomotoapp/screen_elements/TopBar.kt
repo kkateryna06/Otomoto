@@ -21,8 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,52 +34,52 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.compose.AppTheme
 import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.R
 import com.example.otomotoapp.Screen
 
 @Composable
-fun TopAppBar(isSpecialCarEnabled: Boolean, viewModel: MainViewModel, navController: NavHostController){
-    val isFilterMenuExpanded = remember { mutableStateOf(false) }
+fun TopBar(mainViewModel: MainViewModel, navController: NavHostController, onMenuClick: () -> Unit,
+           title: String) {
+    val isFilterMenuExpanded by mainViewModel.isSpecialCarEnabled.observeAsState()
 
-    Row(modifier = Modifier
-        .fillMaxWidth()
-        .background(color = MaterialTheme.colorScheme.primaryContainer)
-        .padding(horizontal = 19.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-
-        ) {
-        IconButton(
-            modifier = Modifier.size(30.dp),
-            onClick = {}) {
-            Icon(Icons.Default.Menu, contentDescription = "Menu", modifier = Modifier.fillMaxSize())
-        }
-
-        Text(text = "Otomoto Cars", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Switch(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .background(color = MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 19.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+            ) {
+            IconButton(
                 modifier = Modifier.size(30.dp),
-                checked = isSpecialCarEnabled,
-                onCheckedChange = { isChecked -> viewModel.toggleSpecialCarSwitch(isChecked) })
-            Text(
-                text= "Special"
-            )
-        }
-    }
-    Column {
-        SearchField(isFilterMenuExpanded, navController = navController)
-    }
+                onClick = {
+                    onMenuClick()
+                }) {
+                Icon(Icons.Default.Menu, contentDescription = "Menu", modifier = Modifier.fillMaxSize())
+            }
 
+            Text(text = title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Switch(
+                    modifier = Modifier.size(30.dp),
+                    checked = isFilterMenuExpanded ?: false,
+                    onCheckedChange = { isChecked -> mainViewModel.toggleSpecialCarSwitch(isChecked) })
+                Text(
+                    text= "Special"
+                )
+            }
+        }
+
+        SearchField(isFilterMenuExpanded ?: false, navController = navController)
+    }
 }
 
 @Composable
-fun SearchField(isFilterMenuExpanded: MutableState<Boolean>, navController: NavHostController) {
+fun SearchField(isFilterMenuExpanded: Boolean, navController: NavHostController) {
     var searchText by remember { mutableStateOf(TextFieldValue("Search")) }
 
     Box(modifier = Modifier.padding(15.dp)) {
@@ -94,7 +94,7 @@ fun SearchField(isFilterMenuExpanded: MutableState<Boolean>, navController: NavH
         ) {
 
             IconButton(onClick = {
-                navController.navigate(Screen.FilterScreen.withArgs(isFilterMenuExpanded.value))
+                navController.navigate(Screen.FilterScreen.withArgs(isFilterMenuExpanded))
             }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     painter = painterResource(id = R.drawable.filter), contentDescription = null,
@@ -126,17 +126,6 @@ fun SearchField(isFilterMenuExpanded: MutableState<Boolean>, navController: NavH
                 )
             }
 
-        }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun TopAppBarPreview() {
-    AppTheme(dynamicColor = false) {
-        Column(modifier = Modifier.fillMaxSize()) {
-//            TopAppBar(isSpecialCarEnabled = false, viewModel = MainViewModel())
         }
     }
 }

@@ -1,10 +1,8 @@
-package com.example.otomotoapp.screen
+package com.example.otomotoapp.screens
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +13,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.database.FavouriteCarsViewModel
@@ -36,9 +33,6 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
             }
         }
 
-        Log.d("DEBUG", "fav cars: $favCarsList")
-        Log.d("DEBUG", "car list: $carList")
-
         if (errorMessage?.isNotEmpty() == true) {
             Column(modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -46,7 +40,7 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
                 Text(text = errorMessage!!, color = Color.Red)
             }
         }
-        Column(modifier = Modifier.fillMaxSize().padding(top = 150.dp)) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
             CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel)
         }
@@ -56,7 +50,6 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
         Column(modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text("Ups... It's empty", style = MaterialTheme.typography.headlineLarge)
-            Log.d("DEBUG", "empty list")
         }
     }
 

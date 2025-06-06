@@ -6,8 +6,6 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
 class AppBarsViewModel: ViewModel() {
-    var showBottomBar by mutableStateOf(false)
-
     var carLink by mutableStateOf<String?>(null)
     var carPrice by mutableStateOf<Int?>(null)
 
