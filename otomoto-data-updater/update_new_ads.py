@@ -197,81 +197,85 @@ def extract_car_data(link, json_data):
     # BASIC INFORMATION
     parameters = advert.get("parametersDict", {})
 
-    mark = parameters.get("make", {}).get("values")[0].get("label")
-    model = extract_param("model", parameters, True)
-    version = extract_param("version", parameters, True)
-    color = extract_param("color", parameters)
-    door_count = extract_param("door_count", parameters)
-    nr_seats = extract_param("nr_seats", parameters)
-    year = extract_param("year", parameters)
-    generation = extract_param("generation", parameters, True)
+    try:
+        mark = parameters.get("make", {}).get("values")[0].get("label")
+        model = extract_param("model", parameters, True)
+        version = extract_param("version", parameters, True)
+        color = extract_param("color", parameters)
+        door_count = extract_param("door_count", parameters)
+        nr_seats = extract_param("nr_seats", parameters)
+        year = extract_param("year", parameters)
+        generation = extract_param("generation", parameters, True)
 
-    # TECHNICAL SPECS
-    fuel_type = extract_param("fuel_type", parameters, True)
-    engine_capacity = extract_param("engine_capacity", parameters)
-    engine_power = extract_param("engine_power", parameters)
-    body_type = extract_param("body_type", parameters, True)
-    gearbox = extract_param("gearbox", parameters, True)
-    transmission = extract_param("transmission", parameters, True)
-    extra_urban_consumption = extract_param("extra_urban_consumption", parameters)
-    urban_consumption = extract_param("urban_consumption", parameters)
-    mileage = extract_param("mileage", parameters)
+        # TECHNICAL SPECS
+        fuel_type = extract_param("fuel_type", parameters, True)
+        engine_capacity = extract_param("engine_capacity", parameters)
+        engine_power = extract_param("engine_power", parameters)
+        body_type = extract_param("body_type", parameters, True)
+        gearbox = extract_param("gearbox", parameters, True)
+        transmission = extract_param("transmission", parameters, True)
+        extra_urban_consumption = extract_param("extra_urban_consumption", parameters)
+        urban_consumption = extract_param("urban_consumption", parameters)
+        mileage = extract_param("mileage", parameters)
 
-    # CONDITION HISTORY
-    if extract_param("registered", parameters) == "1":
-        has_registration = True
-    else:
-        has_registration = False
+        # CONDITION HISTORY
+        if extract_param("registered", parameters) == "1":
+            has_registration = True
+        else:
+            has_registration = False
 
-    # EQUIPMENT
-    equipment = advert.get("equipment", {})
-    equipment = json.dumps(equipment)
+        # EQUIPMENT
+        equipment = advert.get("equipment", {})
+        equipment = json.dumps(equipment)
 
-    # PARAMETERS
-    parameters_dict = advert.get("parametersDict", {})
-    parameters_dict = json.dumps(parameters_dict)
+        # PARAMETERS
+        parameters_dict = advert.get("parametersDict", {})
+        parameters_dict = json.dumps(parameters_dict)
 
-    # ADVERT INFO
-    price = advert.get("price", {}).get("value", None)
-    date = advert.get("createdAt", None)
-    id = advert.get("id")
-    description = clean_html_description(advert.get("description", None))
+        # ADVERT INFO
+        price = advert.get("price", {}).get("value", None)
+        date = advert.get("createdAt", None)
+        id = advert.get("id")
+        description = clean_html_description(advert.get("description", None))
 
-    seller = advert.get("seller", {})
-    seller_type = seller.get("type", None)
+        seller = advert.get("seller", {})
+        seller_type = seller.get("type", None)
 
-    # LOCATION
-    location = advert.get("seller", {}).get("location", {}).get("map", {})
-    location = json.dumps(location)
+        # LOCATION
+        location = advert.get("seller", {}).get("location", {}).get("map", {})
+        location = json.dumps(location)
 
-    # PATH
-    base_folder_photo = r"C:\Users\katya\Desktop\otomoto\otomoto-data-updater\car_photos"
-    photo_folder = urllib.parse.quote(link, safe='')
-    photo_path = os.path.join(base_folder_photo, photo_folder)
+        # PATH
+        base_folder_photo = r"C:\Users\katya\Desktop\otomoto\otomoto-data-updater\car_photos"
+        photo_folder = urllib.parse.quote(link, safe='')
+        photo_path = os.path.join(base_folder_photo, photo_folder)
 
-    base_folder_html = r"C:\Users\katya\Desktop\otomoto\otomoto-data-updater\car_htmls"
-    html_folder = urllib.parse.quote(link, safe='')
-    html_path = os.path.join(base_folder_html, html_folder)
+        base_folder_html = r"C:\Users\katya\Desktop\otomoto\otomoto-data-updater\car_htmls"
+        html_folder = urllib.parse.quote(link, safe='')
+        html_path = os.path.join(base_folder_html, html_folder)
 
-    # Download photos
-    photos = advert.get("images", {}).get("photos", [])
-    photo_links = [photo.get("url") for photo in photos]
-    folder_path = create_safe_folder_name(link)
-    download_images(photo_links, folder_path)
+        # Download photos
+        photos = advert.get("images", {}).get("photos", [])
+        photo_links = [photo.get("url") for photo in photos]
+        folder_path = create_safe_folder_name(link)
+        download_images(photo_links, folder_path)
 
-    dict_result = {
-        "mark": mark, "model": model, "version": version, "color": color,
-        "door_count": door_count, "nr_seats": nr_seats, "year": year, "generation": generation,
-        "fuel_type": fuel_type, "engine_capacity": engine_capacity, "engine_power": engine_power,
-        "body_type": body_type, "gearbox": gearbox,
-        "transmission": transmission, "urban_consumption": urban_consumption,
-        "extra_urban_consumption": extra_urban_consumption, "mileage": mileage,
-        "has_registration": has_registration, "equipment": equipment,
-        "parameters_dict": parameters_dict, "price": price, "date": date, "description": description,
-        "link": link, "car_id": id, "location": location, "photo_path": photo_path,
-        "html_path": html_path, "seller_type": seller_type
-    }
-    return dict_result
+        dict_result = {
+            "mark": mark, "model": model, "version": version, "color": color,
+            "door_count": door_count, "nr_seats": nr_seats, "year": year, "generation": generation,
+            "fuel_type": fuel_type, "engine_capacity": engine_capacity, "engine_power": engine_power,
+            "body_type": body_type, "gearbox": gearbox,
+            "transmission": transmission, "urban_consumption": urban_consumption,
+            "extra_urban_consumption": extra_urban_consumption, "mileage": mileage,
+            "has_registration": has_registration, "equipment": equipment,
+            "parameters_dict": parameters_dict, "price": price, "date": date, "description": description,
+            "link": link, "car_id": id, "location": location, "photo_path": photo_path,
+            "html_path": html_path, "seller_type": seller_type
+        }
+        return dict_result
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
 
 
 # The function updates the Excel file while preserving the formats.
@@ -364,17 +368,18 @@ def update_data(url, database_table, excel_table):
             ]
 
             car_info = extract_car_data(link, json_data)
-            update_database(car_info, "new_ads", database_table)
-            filtered_dict = {key: car_info[key] for key in car_info if key in new_column_order}
-            try: filtered_dict["year"] = int(float(filtered_dict["year"]))
-            except: pass
-            filtered_dict["price"] = int(float(filtered_dict["price"]))
-            try: filtered_dict["mileage"] = int(filtered_dict["mileage"])
-            except: pass
-            try: filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
-            except: pass
-            filtered_dict["relevant"] = "yes"
-            new_car_data.append(filtered_dict)
+            if car_info is not None:
+                update_database(car_info, "new_ads", database_table)
+                filtered_dict = {key: car_info[key] for key in car_info if key in new_column_order}
+                try: filtered_dict["year"] = int(float(filtered_dict["year"]))
+                except: pass
+                filtered_dict["price"] = int(float(filtered_dict["price"]))
+                try: filtered_dict["mileage"] = int(filtered_dict["mileage"])
+                except: pass
+                try: filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
+                except: pass
+                filtered_dict["relevant"] = "yes"
+                new_car_data.append(filtered_dict)
 
     # Save updated date
     if new_car_data:

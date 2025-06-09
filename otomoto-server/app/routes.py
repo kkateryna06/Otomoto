@@ -34,7 +34,9 @@ def get_all_cars(
         min_urban_consumption: Optional[float] = Query(None),
         max_urban_consumption: Optional[float] = Query(None),
         min_extra_urban_consumption: Optional[float] = Query(None),
-        max_extra_urban_consumption: Optional[float] = Query(None)
+        max_extra_urban_consumption: Optional[float] = Query(None),
+        page: int = Query(0, ge=0),
+        page_size: int = Query(20, gt=0),
 ):
     print(f"Raw mark param: {mark}")
     query = db.query(
@@ -76,6 +78,10 @@ def get_all_cars(
 
     cars = query.order_by(asc(Car.mark)).all()
 
+    start = page * page_size
+    end = start + page_size
+    cars = cars[start:end]
+
     return [
         {
             "car_id": car.car_id,
@@ -113,30 +119,32 @@ def get_special_cars(
         min_urban_consumption: Optional[float] = Query(None),
         max_urban_consumption: Optional[float] = Query(None),
         min_extra_urban_consumption: Optional[float] = Query(None),
-        max_extra_urban_consumption: Optional[float] = Query(None)
+        max_extra_urban_consumption: Optional[float] = Query(None),
+        page: int = Query(0, ge=0),
+        page_size: int = Query(20, gt=0),
 ):
     query = db.query(SpecialCar)
 
     if mark:
-        query = query.filter(SpecialCar.mark == mark)
+        query = query.filter(SpecialCar.mark.in_(mark))
     # if model:
     #     query = query.filter(SpecialCar.model == model)
     if min_price:
-        query = query.filter(SpecialCar.price <= min_price)
+        query = query.filter(SpecialCar.price >= min_price)
     if max_price:
-        query = query.filter(SpecialCar.price >= max_price)
+        query = query.filter(SpecialCar.price <= max_price)
     if min_year:
         query = query.filter(SpecialCar.year >= min_year)
     if max_year:
         query = query.filter(SpecialCar.year <= max_year)
     if body_type:
-        query = query.filter(SpecialCar.body_type == body_type)
+        query = query.filter(SpecialCar.body_type.in_(body_type))
     if min_mileage:
         query = query.filter(SpecialCar.mileage >= min_mileage)
     if max_mileage:
         query = query.filter(SpecialCar.mileage <= max_mileage)
     if fuel_type:
-        query = query.filter(SpecialCar.fuel_type == fuel_type)
+        query = query.filter(SpecialCar.fuel_type.in_(fuel_type))
     if min_engine_capacity:
         query = query.filter(SpecialCar.engine_capacity >= min_engine_capacity)
     if max_engine_capacity:
@@ -146,11 +154,15 @@ def get_special_cars(
     if max_urban_consumption:
         query = query.filter(SpecialCar.urban_consumption <= max_urban_consumption)
     if min_extra_urban_consumption:
-        query = query.filter(SpecialCar.urban_consumption >= min_extra_urban_consumption)
+        query = query.filter(SpecialCar.extra_urban_consumption >= min_extra_urban_consumption)
     if max_extra_urban_consumption:
-        query = query.filter(SpecialCar.urban_consumption <= max_extra_urban_consumption)
+        query = query.filter(SpecialCar.extra_urban_consumption <= max_extra_urban_consumption)
 
     cars = query.order_by(asc(SpecialCar.mark)).all()
+
+    start = page * page_size
+    end = start + page_size
+    cars = cars[start:end]
 
     return [
         {
@@ -174,9 +186,9 @@ def get_car_by_id_from_all(car_id: int, db: Session = Depends(get_db)):
     car = db.query(Car).filter(Car.car_id == car_id).first()
     return car
 
-@router.get("/specialcars/{spec}")
-def get_car_by_id_from_special(db: Session = Depends(get_db)):
-    car = db.query(SpecialCar).filter(SpecialCar.car_id == SpecialCar.car_id).first()
+@router.get("/specialcars/{car_id}")
+def get_car_by_id_from_special(car_id: int, db: Session = Depends(get_db)):
+    car = db.query(SpecialCar).filter(SpecialCar.car_id == car_id).first()
     return car
 
 @router.get("/allcars/{car_id}/photo")
@@ -207,13 +219,13 @@ def get_unique_values_from_special(value: str, db: Session = Depends(get_db)):
 
 @router.get("/allcars/searchminmax/{value}")
 def get_min_max_values_from_all(value: str, db: Session = Depends(get_db)):
-    column = getattr(Car, value, None)
+    column = getattr(SpecialCar, value, None)
     min_max_values = db.query(func.min(column), func.max(column)).first()
     return {"min_max_values": list(min_max_values)}
 
 @router.get("/specialcars/searchminmax/{value}")
 def get_min_max_values_from_all(value: str, db: Session = Depends(get_db)):
-    column = getattr(Car, value, None)
+    column = getattr(SpecialCar, value, None)
     min_max_values = db.query(func.min(column), func.max(column)).first()
     return {"min_max_values": list(min_max_values)}
 
