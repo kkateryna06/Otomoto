@@ -86,8 +86,12 @@ fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navControl
 
     LaunchedEffect(allDataLoaded) {
         if (allDataLoaded && userFilterData == null) {
+            val cleanedMarks = markData?.copy(
+                unique_values = markData!!.unique_values.filterNotNull()
+            )
+
             val newFilterData = FilterData(
-                markList = getUnique(markData),
+                markList = getUnique(cleanedMarks),
                 modelList = getUnique(modelData),
                 maxPrice = getMinMax(priceData).second,
                 minYear = getMinMax(yearData).first,
@@ -327,7 +331,6 @@ fun PriceRangeSlider(
                 minPriceSlider.value = it.start; maxPriceSlider.value = it.endInclusive
                 viewModel.updateFilterData { copy(minPrice = minPriceSlider.value) }
                 viewModel.updateFilterData { copy(maxPrice = maxPriceSlider.value) }
-                Log.d("DEBUG", "filters: $userFilterData")
                 },
 
             valueRange = 0f..maxBasePrice

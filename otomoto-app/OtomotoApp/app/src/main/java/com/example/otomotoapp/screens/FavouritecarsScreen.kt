@@ -42,7 +42,7 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
         }
         Column(modifier = Modifier.fillMaxSize()) {
 
-            CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel)
+            CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel, viewModel, {viewModel.fetchNextPage()})
         }
     }
 

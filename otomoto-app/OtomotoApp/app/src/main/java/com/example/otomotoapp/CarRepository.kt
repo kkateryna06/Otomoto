@@ -23,20 +23,22 @@ class CarRepository {
         minEngineCapacity: Float? = null,
         maxEngineCapacity: Float? = null,
         minUrbanConsumption: Float? = null,
-        maxUrbanConsumption: Float? = null
+        maxUrbanConsumption: Float? = null,
+        page: Int,
+        pageSize: Int
     ): List<CarSpecs> {
         return try {
             if (isSpecialCarsEnabled) {
             RetrofitClient.instance.getSpecialCars(
                 mark, model, minPrice, maxPrice, minYear, maxYear, bodyType,
                 minMileage, maxMileage, fuelType, minEngineCapacity,
-                maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption
+                maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption, page, pageSize
             )
         } else {
             RetrofitClient.instance.getAllCars(
                 mark, model, minPrice, maxPrice, minYear, maxYear, bodyType,
                 minMileage, maxMileage, fuelType, minEngineCapacity,
-                maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption
+                maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption, page, pageSize
             )
         }
         } catch (e: Exception) {

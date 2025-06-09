@@ -25,7 +25,9 @@ interface ApiService {
         @Query("min_engine_capacity") minEngineCapacity: Float? = null,
         @Query("max_engine_capacity") maxEngineCapacity: Float? = null,
         @Query("min_urban_consumption") minUrbanConsumption: Float? = null,
-        @Query("max_urban_consumption") maxUrbanConsumption: Float? = null
+        @Query("max_urban_consumption") maxUrbanConsumption: Float? = null,
+        @Query("page") page: Int,
+        @Query("page_size") pageSize: Int
     ): List<CarSpecs>
 
     @GET("/specialcars/")
@@ -43,7 +45,9 @@ interface ApiService {
         @Query("min_engine_capacity") minEngineCapacity: Float? = null,
         @Query("max_engine_capacity") maxEngineCapacity: Float? = null,
         @Query("min_urban_consumption") minUrbanConsumption: Float? = null,
-        @Query("max_urban_consumption") maxUrbanConsumption: Float? = null
+        @Query("max_urban_consumption") maxUrbanConsumption: Float? = null,
+        @Query("page") page: Int,
+        @Query("page_size") pageSize: Int
     ): List<CarSpecs>
 
     @GET("/allcars/{car_id}")

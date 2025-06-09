@@ -40,7 +40,8 @@ open class MainViewModel: ViewModel() {
 
     fun toggleSpecialCarSwitch(isEnabled: Boolean) {
         _isSpecialCarEnabled.value = isEnabled
-        fetchCars()
+        _baseFilterData.value = null
+        resetUserFilters()
     }
 
     // LiveData for error messages
@@ -113,6 +114,8 @@ open class MainViewModel: ViewModel() {
 
     fun resetUserFilters() {
         _userFilterData.value = _baseFilterData.value
+        resetPaginationAndFetch()
+        Log.d("DEBUG", "userFilters: ${userFilterData.value}")
     }
 
     fun addToFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
@@ -129,18 +132,22 @@ open class MainViewModel: ViewModel() {
         }
     }
 
+    private var currentPage = 0
+    private val pageSize = 20
+    private var isLoading = false
+    private var allLoaded = false
 
+    fun fetchNextPage() {
+        if (isLoading || allLoaded) return
+        isLoading = true
 
-    fun fetchCars() {
         viewModelScope.launch {
             try {
                 val filters = _userFilterData.value ?: FilterData()
-                Log.d("DEBUG", "Fetching cars with filters: minMileage=${filters.minMileage}, maxMileage=${filters.maxMileage}, minYear=${filters.minYear}, maxYear=${filters.maxYear}")
 
-                val cars = repository.getCars(
+                val newCars = repository.getCars(
                     isSpecialCarsEnabled = _isSpecialCarEnabled.value ?: false,
                     mark = filters.markList,
-//                    model = filters.modelList.toString(),
                     minPrice = filters.minPrice,
                     maxPrice = filters.maxPrice,
                     minYear = filters.minYear.toInt(),
@@ -152,14 +159,34 @@ open class MainViewModel: ViewModel() {
                     minEngineCapacity = filters.minEngineCapacity,
                     maxEngineCapacity = filters.maxEngineCapacity,
                     minUrbanConsumption = filters.minUrbanConsumption,
-                    maxUrbanConsumption = filters.maxUrbanConsumption
+                    maxUrbanConsumption = filters.maxUrbanConsumption,
+                    page = currentPage,
+                    pageSize = pageSize
                 )
-                _carList.postValue(cars)
+                Log.d("DEBUG", "page size: $pageSize")
+
+                if (newCars.isEmpty()) {
+                    allLoaded = true
+                } else {
+                    val updatedList = _carList.value.orEmpty() + newCars
+                    _carList.postValue(updatedList)
+                    currentPage++
+                }
+
                 _errorMessage.postValue(null)
             } catch (e: Exception) {
                 _errorMessage.postValue("Error fetching cars: ${e.message}")
+            } finally {
+                isLoading = false
             }
         }
+    }
+
+    fun resetPaginationAndFetch() {
+        currentPage = 0
+        allLoaded = false
+        _carList.postValue(emptyList())
+        fetchNextPage()
     }
 
     fun getCarById(carId: String): LiveData<CarSpecs?> {

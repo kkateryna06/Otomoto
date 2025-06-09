@@ -129,7 +129,7 @@ fun CarLocation(carSpecs: CarSpecs) {
         position = CameraPosition.fromLatLngZoom(latlngPosition, carSpecs.location.zoom.toFloat())
     }
     val context = LocalContext.current
-
+//
     Column {
         Text(getAddressFromLatLng(context, latlngPosition))
         GoogleMap(
