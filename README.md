@@ -168,7 +168,7 @@ https://www.otomoto.pl/osobowe/bmw/6g
 https://www.otomoto.pl/osobowe/audi/a6
 ```
 
-Set up your database connection in db_config.py (located in the root directory):
+Set up your database connection in `db_config`.py (located in the root directory):
 ```
 DATABASE_URL = "postgresql://postgres:990@192.168.1.18:5432/otomoto"
 
