@@ -41,7 +41,6 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
                      favCarsViewModel: FavouriteCarsViewModel,
                      appBarsViewModel: AppBarsViewModel, isSpecialCarEnabled: Boolean,
                      navController: NavHostController) {
-    val carSpecs by viewModel.getCarById(carId).observeAsState()
     val carPhotos by viewModel.carPhotosLiveData.observeAsState()
     val carPhoto = carPhotos?.get(carId)
 
@@ -49,17 +48,24 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
     val isFavCar = favCarsList.contains(FavouriteCar(carId.toLong()))
 
     LaunchedEffect(carId) {
+        viewModel.getCarById(carId)
         viewModel.getPhotoById(carId)
     }
 
+    val carSpecs by viewModel.carSpecs.observeAsState()
+
+    LaunchedEffect(carId) {
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        if (carSpecs != null) {
+        carSpecs?.let { car ->
             appBarsViewModel.updateBottomInfo(
-                link = carSpecs!!.link,
-                price = carSpecs!!.price
+                link = car.link ?: "",
+                price = car.price
             )
-            CarDetails(carSpecs = carSpecs!!, carPhoto, favCarsViewModel, isFavCar)
+            CarDetails(carSpecs = car, carPhoto, favCarsViewModel, isFavCar)
         }
+
     }
 }
 

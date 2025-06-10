@@ -2,11 +2,17 @@ package com.example.otomotoapp
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.data.MinMaxResponse
 import com.example.otomotoapp.data.UniqueValueResponse
+import com.google.gson.Gson
+import android.content.Context  // Для доступа к активам
+import androidx.annotation.RawRes  // Если вдруг будешь использовать res/raw
+import java.io.InputStreamReader
 
-class CarRepository {
+
+class CarRepository(private val context: Context) {
 
     suspend fun getCars(
         isSpecialCarsEnabled: Boolean,
@@ -42,8 +48,15 @@ class CarRepository {
             )
         }
         } catch (e: Exception) {
-            throw Exception("Failed to fetch car specs: ${e.message}")
+            loadMockCars()
         }
+    }
+
+    private fun loadMockCars(): List<CarSpecs> {
+        val inputStream = context.assets.open("mock_cars.json")
+        val reader = InputStreamReader(inputStream)
+        Log.d("DEBUG", "$reader")
+        return Gson().fromJson(reader, Array<CarSpecs>::class.java).toList()
     }
 
     suspend fun getCarById(carId: String, isSpecialCarsEnabled: Boolean): CarSpecs {
@@ -54,7 +67,9 @@ class CarRepository {
                 RetrofitClient.instance.getCarByIdFromAll(carId)
             }
         } catch (e: Exception) {
-            throw Exception("Failed to fetch car specs: ${e.message}")
+            loadMockCars().firstOrNull { it.car_id == carId }
+                ?: throw Exception("Mock data does not contain car with id: $carId")
+
         }
     }
 
@@ -69,7 +84,7 @@ class CarRepository {
             response.body()?.byteStream()?.use { BitmapFactory.decodeStream(it) }
 
         } catch (e: Exception) {
-            throw Exception("Failed to fetch car photo: ${e.message}")
+            BitmapFactory.decodeResource(context.resources, R.drawable.no_image)
         }
     }
 

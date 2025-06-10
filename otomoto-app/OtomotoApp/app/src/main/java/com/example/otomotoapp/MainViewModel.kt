@@ -1,7 +1,10 @@
 package com.example.otomotoapp
 
+import android.app.Application
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,7 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-open class MainViewModel: ViewModel() {
+open class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Screens
     private val _currentScreen = MutableLiveData<Screen>(Screen.MainScreen)
     val currentScreen: LiveData<Screen> = _currentScreen
@@ -25,7 +28,7 @@ open class MainViewModel: ViewModel() {
     }
 
 
-    private val repository = CarRepository()
+    private val repository = CarRepository(application)
 
     private val _filterOptions = MutableLiveData(FilterData())
     val filterOptions: LiveData<FilterData> = _filterOptions
@@ -33,6 +36,9 @@ open class MainViewModel: ViewModel() {
     // LiveData for car list
     private val _carList = MutableLiveData<List<CarSpecs>>()
     open val carList: LiveData<List<CarSpecs>> = _carList
+
+    private val _carSpecs = MutableLiveData<CarSpecs?>()
+    val carSpecs: LiveData<CarSpecs?> = _carSpecs
 
     // Live Data for special car switch
     private val _isSpecialCarEnabled = MutableLiveData<Boolean>(false)
@@ -189,19 +195,16 @@ open class MainViewModel: ViewModel() {
         fetchNextPage()
     }
 
-    fun getCarById(carId: String): LiveData<CarSpecs?> {
-        val carSpecsLiveData = MutableLiveData<CarSpecs?>()
-
+    fun getCarById(carId: String) {
         viewModelScope.launch {
             try {
-                val carSpecs = repository.getCarById(carId, _isSpecialCarEnabled.value ?: false)
-                 carSpecsLiveData.value = carSpecs
+                val car = repository.getCarById(carId, _isSpecialCarEnabled.value ?: false)
+                _carSpecs.value = car
                 _errorMessage.value = null
             } catch (e: Exception) {
                 _errorMessage.value = "Error fetching car specs: ${e.message}"
             }
         }
-        return carSpecsLiveData
     }
 
     private val _carPhotosLiveData = MutableLiveData<Map<String, Bitmap?>>()

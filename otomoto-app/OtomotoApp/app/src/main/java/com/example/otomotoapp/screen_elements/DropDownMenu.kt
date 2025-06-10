@@ -102,7 +102,7 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
             Text(text = carSpecs.description)
         }
     }
-    if (textMenu == "Location") {
+    if (textMenu == "Location" && carSpecs.location.latitude != null && carSpecs.location.longitude != null) {
         CarLocation(carSpecs)
     }
 }
