@@ -114,10 +114,11 @@ fun CarAd(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(8.dp),
     ) {
-        items(adds) { item ->
+        items(adds.filterNotNull()) { item ->
             val isFavCar = favCarsList.contains(FavouriteCar(item.car_id.toLong()))
             AdItem(navController, item, isSpecialCarEnabled, isFavCar, favCarsViewModel, viewModel)
         }
+
 
         item(span = { GridItemSpan(2) }) {
             Button(
