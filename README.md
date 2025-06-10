@@ -8,6 +8,54 @@ I also plan to add smart alerts to notify when a great deal pops up. And looking
 This project combines web scraping, a robust backend API, and a sleek mobile app to create a seamless experience for car hunters.
 
 
+## Demo Installation
+
+[Video Demo](https://youtube.com/shorts/px98Wrb-iyE?feature=share)
+
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/main_screen.png" width="auto" height="300"/><br/>
+      <b>Main Screen</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/main_screen2.png" width="auto" height="300"/><br/>
+      <b>Main Screen 2</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/filters_screen.png" width="auto" height="300"/><br/>
+      <b>Filters Screen</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshots/details_screen.png" width="auto" height="300"/><br/>
+      <b>Details Screen</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/details_screen2.png" width="auto" height="300"/><br/>
+      <b>Details Screen 2</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/favourites_screen.png" width="auto" height="300"/><br/>
+      <b>Favourites Screen</b>
+    </td>
+  </tr>
+</table>
+
+
+
+
+
+
+You can download a demo version of the app from the link below and explore basic functionality without running the server:
+
+[Download APK with test data](https://github.com/kkateryna06/Otomoto/releases/tag/v1.0-demo)
+
+ Note: The demo uses mock data, so only limited features are available. A backend server is required for full functionality.
+
+
 ## Project Structure
 A brief overview of the three main components of the project:
 
@@ -135,16 +183,16 @@ DB_SETTINGS = {
 
 ### Data Updater Setup
 
-1. Go to otomoto-data-updater/ directory
-
-```
-cd otomoto-data-updater
-```
-
-2. Install dependencies:
+1. Install dependencies:
 
 ```
 pip install -r requirements.txt
+```
+
+2. Go to otomoto-data-updater/ directory
+
+```
+cd otomoto-data-updater
 ```
 
 3. Paste the Otomoto search URLs of interest into configuration file `config.txt`
@@ -158,19 +206,13 @@ python main.py
 
 ### Server Setup
 
-1. Go to the otomoto-server/ directory
-
-```
-cd otomoto-server
-```
-
-2. Install dependencies:
+1. Install dependencies:
 
 ```
 pip install -r requirements.txt
 ```
 
-3. Configure environment variables (e.g. database connection):
+3. Configure environment variables in **db_config.py**:
 
 ```
 DATABASE_URL=postgresql://user:password@localhost/dbname
@@ -179,7 +221,7 @@ DATABASE_URL=postgresql://user:password@localhost/dbname
 4. Start the server:
 
 ```
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn otomoto-server.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 5. Open Swagger UI in a browser at: http://localhost:8000/docs
@@ -280,7 +322,6 @@ Swagger UI allows you to:
 - Option to set number of cars per page (e.g. 10 / 20 / 50)
 
 ## Final words
-
 This isn’t just another to-do app or a movie list built from a tutorial. This project is personal — born from curiosity, built with care, and driven by a real passion for cars and technology.
 
 I wanted a tool to help me explore and understand the used car market more deeply. Over time, I’ve poured not just code, but time, thought, and a bit of soul into it.
