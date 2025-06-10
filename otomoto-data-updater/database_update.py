@@ -1,6 +1,8 @@
 import psycopg2
 from psycopg2.sql import SQL, Identifier
 
+from db_config import DB_SETTINGS
+
 
 def update_database_car_relevant(car_id, sell_date, database_table):
     """
@@ -62,12 +64,7 @@ def update_database(data, to_do, database_table):
 
     try:
         # Connecting to the database
-        connection = psycopg2.connect(
-            host="localhost",
-            database="otomoto",
-            user="postgres",
-            password="990",
-        )
+        connection = psycopg2.connect(**DB_SETTINGS)
 
         with connection.cursor() as cursor:
             if to_do == "car_relevant":
@@ -114,12 +111,7 @@ def get_all_car_links(database_table):
     :return: List of car advertisement links.
     """
     try:
-        connection = psycopg2.connect(
-            host="localhost",
-            database="otomoto",
-            user="postgres",
-            password="990",
-        )
+        connection = psycopg2.connect(**DB_SETTINGS)
 
         with connection.cursor() as cursor:
             query = SQL("SELECT link FROM {}").format(Identifier(database_table))
@@ -145,12 +137,7 @@ def get_all_car_links_for_relevant_check(database_table):
     :return: List of links to check for relevance.
     """
     try:
-        connection = psycopg2.connect(
-            host="localhost",
-            database="otomoto",
-            user="postgres",
-            password="990",
-        )
+        connection = psycopg2.connect(**DB_SETTINGS)
 
         with connection.cursor() as cursor:
             query = SQL("SELECT link FROM {} where sell_date is null").format(Identifier(database_table))

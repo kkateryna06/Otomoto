@@ -1,27 +1,24 @@
-from update_new_ads import task, task_special
 from update_relevant import task_relevant
-
+from update_new_ads import load_links_from_file, run_links
 print("1 - new ads\n2 - update relevant")
 to_do = int(input())
 
+all_links, special_links = load_links_from_file()
+
 if to_do == 1:
-    print("1 - All cars\n2 - All special cars")
-    to_do = int(input())
-    # Parsing ads of all cars
-    if to_do == 1:
-        task()
-    # Parsing ads of special cars
-    elif to_do == 2:
-        task_special()
+    print("1 - All cars\n2 - Special cars")
+    dataset_type = int(input())
+
+    if dataset_type == 1:
+        run_links(all_links, "cars_info", "cars_info.xlsx")
+    elif dataset_type == 2:
+        run_links(special_links, "special_cars_info", "special_cars_info.xlsx")
 
 elif to_do == 2:
     print("1 - All cars\n2 - Special cars")
-    to_do = int(input())
-    # Updating relevant state for all cars
-    if to_do == 1:
-        task_relevant("cars_info")
-    # Updating relevant state for special cars
-    if to_do == 2:
-        task_relevant("special_cars_info")
+    dataset_type = int(input())
 
-# uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    if dataset_type == 1:
+        task_relevant("cars_info")
+    elif dataset_type == 2:
+        task_relevant("special_cars_info")
