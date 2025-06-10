@@ -96,6 +96,43 @@ A Kotlin-based Android application for browsing and filtering cars.
 
 - Additional: pip for installing Python dependencies
 
+### Before running the project, make sure to:
+
+Fill in links_config.txt with your own Otomoto search URLs.
+
+1. Go to otomoto.pl
+
+2. Use the filters to define your desired criteria (e.g. body type, price range, mileage)
+
+3. Important: In the search settings, choose sorting by "newest"
+
+4. Copy the full URL from the browser and paste it into links_config.txt
+
+5. Split links into two groups using comments:
+
+```
+# ALL CARS
+https://www.otomoto.pl/osobowe?search%5Bfilter_float_price%3Ato%5D=30000
+https://www.otomoto.pl/osobowe/dolnoslaskie?search%5Bfilter_float_mileage%3Ato%5D=100000&search%5Bfilter_float_price%3Ato%5D=50000
+
+# SPECIAL CARS
+https://www.otomoto.pl/osobowe/bmw/6g
+https://www.otomoto.pl/osobowe/audi/a6
+```
+
+Set up your database connection in db_config.py (located in the root directory):
+```
+DATABASE_URL = "postgresql://postgres:990@192.168.1.18:5432/otomoto"
+
+DB_SETTINGS = {
+    "host": "localhost",
+    "database": "otomoto",
+    "user": "postgres",
+    "password": "990",
+    "port": 5432
+}
+```
+
 ### Data Updater Setup
 
 1. Go to otomoto-data-updater/ directory
