@@ -1,9 +1,9 @@
-DATABASE_URL = "postgresql://postgres:990@192.168.1.18:5432/otomoto"
+DATABASE_URL = "postgres://{user}:{password}@{hostname}:{port}/{database_name}"
 
 DB_SETTINGS = {
     "host": "localhost",
-    "database": "otomoto",
-    "user": "postgres",
-    "password": "990",
-    "port": 5432
+    "database": "database_name",
+    "user": "user",
+    "password": "password",
+    "port": "port"
 }

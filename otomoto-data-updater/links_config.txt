@@ -1,7 +1,0 @@
-# ALL CARS
-https://www.otomoto.pl/osobowe?search%5Bfilter_float_price%3Ato%5D=30000
-https://www.otomoto.pl/osobowe/dolnoslaskie?search%5Bfilter_float_mileage%3Ato%5D=100000&search%5Bfilter_float_price%3Ato%5D=50000
-
-# SPECIAL CARS
-https://www.otomoto.pl/osobowe/bmw/6g
-https://www.otomoto.pl/osobowe/audi/a6

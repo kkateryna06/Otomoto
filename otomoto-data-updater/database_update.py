@@ -34,7 +34,7 @@ def update_database_car_info(car_data, database_table):
         car_data['nr_seats'], car_data['year'], car_data['generation'], car_data['fuel_type'],
         car_data['engine_capacity'], car_data['engine_power'], car_data['body_type'], car_data['gearbox'],
         car_data['transmission'], car_data['urban_consumption'], car_data['extra_urban_consumption'],
-        car_data['mileage'], car_data['has_registration'], car_data['equipment'], car_data['parameters_dict'],
+        car_data['mileage'], car_data['has_registration'],
         car_data['price'], car_data['date'], car_data['description'], car_data['link'], car_data['car_id'],
         car_data['location'], car_data['photo_path'], car_data['html_path'], car_data['seller_type'],
     ]
@@ -45,10 +45,10 @@ def update_database_car_info(car_data, database_table):
             INSERT INTO {} (
                 mark, model, version, color, door_count, nr_seats, year, generation, fuel_type, engine_capacity,
                 engine_power, body_type, gearbox, transmission, urban_consumption, extra_urban_consumption,
-                mileage, has_registration, equipment, parameters_dict, price, date, description, link, car_id,
+                mileage, has_registration, price, date, description, link, car_id,
                 location, photo_path, html_path, seller_type
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                      %s, %s, %s, %s, %s, %s, %s, %s);
+                      %s, %s, %s, %s, %s, %s);
             """).format(Identifier(database_table))
 
     return insert_car_info_query, insert_values
@@ -117,7 +117,6 @@ def get_all_car_links(database_table):
             query = SQL("SELECT link FROM {}").format(Identifier(database_table))
             cursor.execute(query)
             result = cursor.fetchall()
-            # Преобразуем список кортежей [(1,), (2,), (3,)] в [1, 2, 3]
             car_ids = [row[0] for row in result]
             return car_ids
 
@@ -143,7 +142,6 @@ def get_all_car_links_for_relevant_check(database_table):
             query = SQL("SELECT link FROM {} where sell_date is null").format(Identifier(database_table))
             cursor.execute(query)
             result = cursor.fetchall()
-            # Преобразуем список кортежей [(1,), (2,), (3,)] в [1, 2, 3]
             car_ids = [row[0] for row in result]
             return car_ids
 

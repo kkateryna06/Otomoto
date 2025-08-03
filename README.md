@@ -170,14 +170,14 @@ https://www.otomoto.pl/osobowe/audi/a6
 
 Set up your database connection in `db_config`.py (located in the root directory):
 ```
-DATABASE_URL = "postgresql://postgres:990@192.168.1.18:5432/otomoto"
+DATABASE_URL = "postgres://{user}:{password}@{hostname}:{port}/{database_name}"
 
 DB_SETTINGS = {
     "host": "localhost",
-    "database": "otomoto",
-    "user": "postgres",
-    "password": "990",
-    "port": 5432
+    "database": "database_name",
+    "user": "user",
+    "password": "password",
+    "port": "port"
 }
 ```
 
@@ -271,9 +271,9 @@ GET /allcars — get a list of all cars
 
 GET /allcars/{id} — get details of a specific car
 
-GET /allcars/search/{value} — get unique field values ​​(e.g. mark)
+GET /allcars/search/{value} — get unique field values (e.g. mark)
 
-GET /allcars/searchminmax/{value} — minimum and maximum values ​​(e.g. price)
+GET /allcars/searchminmax/{value} — minimum and maximum values (e.g. price)
 
 GET /allcars/{id}/photo — get a photo by ID
 ```

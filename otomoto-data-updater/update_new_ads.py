@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import requests
 import json
@@ -224,14 +225,6 @@ def extract_car_data(link, json_data):
         else:
             has_registration = False
 
-        # EQUIPMENT
-        equipment = advert.get("equipment", {})
-        equipment = json.dumps(equipment)
-
-        # PARAMETERS
-        parameters_dict = advert.get("parametersDict", {})
-        parameters_dict = json.dumps(parameters_dict)
-
         # ADVERT INFO
         price = advert.get("price", {}).get("value", None)
         date = advert.get("createdAt", None)
@@ -267,8 +260,7 @@ def extract_car_data(link, json_data):
             "body_type": body_type, "gearbox": gearbox,
             "transmission": transmission, "urban_consumption": urban_consumption,
             "extra_urban_consumption": extra_urban_consumption, "mileage": mileage,
-            "has_registration": has_registration, "equipment": equipment,
-            "parameters_dict": parameters_dict, "price": price, "date": date, "description": description,
+            "has_registration": has_registration, "price": price, "date": date, "description": description,
             "link": link, "car_id": id, "location": location, "photo_path": photo_path,
             "html_path": html_path, "seller_type": seller_type
         }
@@ -389,11 +381,13 @@ def update_data(url, database_table, excel_table):
         print("No new ads found.")
 
 
-def load_links_from_file(filepath="links_config.txt"):
+def load_links_from_file():
     all_links = []
     special_links = []
 
-    with open(filepath, encoding="utf-8") as f:
+    current_dir = Path(__file__).resolve().parent
+    filepath = current_dir.parent / 'links_config.txt'
+    with open(filepath, encoding='utf-8') as f:
         lines = f.readlines()
 
     current_type = None
@@ -408,7 +402,7 @@ def load_links_from_file(filepath="links_config.txt"):
                 current_type = "special"
             continue
         if current_type == "all":
-            all_links.append((line, None))  # no label
+            all_links.append((line, None))
         elif current_type == "special":
             label = None
             if "|" in line:
