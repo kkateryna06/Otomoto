@@ -36,5 +36,10 @@ fun SideBar(navController: NavHostController, drawerState: DrawerState, scope: C
                 navController.navigate(Screen.FavouriteCarsScreen.route)
                 scope.launch { drawerState.close() }
             }.fillMaxWidth())
+        Text("Settings",
+            modifier = Modifier.clickable {
+                navController.navigate(Screen.SettingsScreen.route)
+                scope.launch { drawerState.close() }
+            }.fillMaxWidth())
     }
 }

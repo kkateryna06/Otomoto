@@ -5,7 +5,9 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import asc, cast, String, text, distinct, func
 from sqlalchemy.orm import Session
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, StreamingResponse
+from PIL import Image
+import io
 
 from .database import get_db
 from .models import Car, SpecialCar
@@ -241,12 +243,19 @@ def get_car_by_id_from_special(car_id: int, db: Session = Depends(get_db)):
     }
 )
 def get_image_by_id_from_all(car_id: int, db: Session = Depends(get_db)):
-    image_path = db.query(Car.photo_path).filter(Car.car_id == car_id).scalar() + "\photo_1.jpg"
-    print(image_path)
-    if not os.path.exists(image_path) or not os.path.isfile(image_path):
+    path = db.query(Car.photo_path).filter(Car.car_id == car_id).scalar() + "\\photo_1.jpg"
+    if not os.path.exists(path):
         return {"error": "File does not exist"}
 
-    return FileResponse(image_path, media_type="image/jpeg")
+    img = Image.open(path)
+    img.thumbnail((800, 800))  # resize to 800x800 px
+    buffer = io.BytesIO()
+    img.save(buffer, format="JPEG", quality=75)
+    buffer.seek(0)
+
+    response = StreamingResponse(buffer, media_type="image/jpeg")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
 
 @router.get(
     "/specialcars/{car_id}/photo",

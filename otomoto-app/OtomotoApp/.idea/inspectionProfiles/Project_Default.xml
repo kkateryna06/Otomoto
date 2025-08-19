@@ -53,5 +53,8 @@
       <option name="composableFile" value="true" />
       <option name="previewFile" value="true" />
     </inspection_tool>
+    <inspection_tool class="TodoComment" enabled="true" level="WARNING" enabled_by_default="true">
+      <scope name="All Changed Files" level="WARNING" enabled="true" />
+    </inspection_tool>
   </profile>
 </component>

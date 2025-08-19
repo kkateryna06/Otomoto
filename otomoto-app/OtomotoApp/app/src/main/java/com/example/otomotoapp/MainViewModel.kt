@@ -12,13 +12,18 @@ import androidx.lifecycle.viewModelScope
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.data.FilterData
 import com.example.otomotoapp.data.MinMaxResponse
+import com.example.otomotoapp.data.PreferencesHelper
 import com.example.otomotoapp.data.UniqueValueResponse
 import com.example.otomotoapp.database.FavouriteCar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-open class MainViewModel(application: Application) : AndroidViewModel(application) {
+open class MainViewModel(application: Application, prefs: PreferencesHelper) : AndroidViewModel(application) {
     // Screens
     private val _currentScreen = MutableLiveData<Screen>(Screen.MainScreen)
     val currentScreen: LiveData<Screen> = _currentScreen
@@ -28,7 +33,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
 
-    private val repository = CarRepository(application)
+    private val repository = CarRepository(application, prefs)
 
     private val _filterOptions = MutableLiveData(FilterData())
     val filterOptions: LiveData<FilterData> = _filterOptions

@@ -13,4 +13,5 @@ sealed class Screen(val route: String, val title: String) {
         }
     }
     object FavouriteCarsScreen : Screen("favourite_cars_screen", "Favourites")
+    object SettingsScreen : Screen("settings_screen", "Settings")
 }

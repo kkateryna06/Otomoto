@@ -24,8 +24,6 @@ data class CarSpecs(
     val generation: String,
     val has_registration: Boolean,
     val seller_type: String,
-//    val equipment: JSONObject,
-//    val parametersDict: JSONObject,
     val description: String,
     val link: String,
     val location: Location,

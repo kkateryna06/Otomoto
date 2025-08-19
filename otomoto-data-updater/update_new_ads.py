@@ -176,7 +176,7 @@ def extract_param(label, parameters, is_label=False):
         if is_label:
             return parameters.get(label, {}).get("values")[0].get("label")
         else:
-            return parameters.get(label, {}).get("values")[0].get("value")
+            return parameters.get(label, {}).get("values")[0].get("value").capitalize().replace("-", " ")
     except:
         return None
 
@@ -209,12 +209,12 @@ def extract_car_data(link, json_data):
         generation = extract_param("generation", parameters, True)
 
         # TECHNICAL SPECS
-        fuel_type = extract_param("fuel_type", parameters, True)
+        fuel_type = extract_param("fuel_type", parameters)
         engine_capacity = extract_param("engine_capacity", parameters)
         engine_power = extract_param("engine_power", parameters)
-        body_type = extract_param("body_type", parameters, True)
-        gearbox = extract_param("gearbox", parameters, True)
-        transmission = extract_param("transmission", parameters, True)
+        body_type = extract_param("body_type", parameters)
+        gearbox = extract_param("gearbox", parameters)
+        transmission = extract_param("transmission", parameters)
         extra_urban_consumption = extract_param("extra_urban_consumption", parameters)
         urban_consumption = extract_param("urban_consumption", parameters)
         mileage = extract_param("mileage", parameters)

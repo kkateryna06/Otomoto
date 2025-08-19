@@ -4,7 +4,7 @@ from .database import Base
 
 
 class BaseCar(Base):
-    __abstract__ = 'cars_info'
+    __abstract__ = 'table_name'
 
     car_id = Column(Integer, primary_key=True)
     date = Column(String)
@@ -29,8 +29,6 @@ class BaseCar(Base):
     generation = Column(String, index=True)
     has_registration = Column(Boolean)
     seller_type = Column(String)
-    equipment = Column(String)
-    parameters_dict = Column(String)
     description = Column(String)
     link = Column(String)
     location = Column(String)

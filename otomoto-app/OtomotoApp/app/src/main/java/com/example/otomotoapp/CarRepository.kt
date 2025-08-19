@@ -9,10 +9,12 @@ import com.example.otomotoapp.data.UniqueValueResponse
 import com.google.gson.Gson
 import android.content.Context  // Для доступа к активам
 import androidx.annotation.RawRes  // Если вдруг будешь использовать res/raw
+import com.example.otomotoapp.data.PreferencesHelper
 import java.io.InputStreamReader
 
 
-class CarRepository(private val context: Context) {
+class CarRepository(private val context: Context, prefs: PreferencesHelper) {
+    val api = RetrofitClient.getInstance(prefs)
 
     suspend fun getCars(
         isSpecialCarsEnabled: Boolean,
@@ -35,19 +37,20 @@ class CarRepository(private val context: Context) {
     ): List<CarSpecs> {
         return try {
             if (isSpecialCarsEnabled) {
-            RetrofitClient.instance.getSpecialCars(
+            api.getSpecialCars(
                 mark, model, minPrice, maxPrice, minYear, maxYear, bodyType,
                 minMileage, maxMileage, fuelType, minEngineCapacity,
                 maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption, page, pageSize
             )
         } else {
-            RetrofitClient.instance.getAllCars(
+                api.getAllCars(
                 mark, model, minPrice, maxPrice, minYear, maxYear, bodyType,
                 minMileage, maxMileage, fuelType, minEngineCapacity,
                 maxEngineCapacity, minUrbanConsumption, maxUrbanConsumption, page, pageSize
             )
         }
         } catch (e: Exception) {
+            Log.d("DEBUG", "ERROR: $e")
             loadMockCars()
         }
     }
@@ -62,9 +65,9 @@ class CarRepository(private val context: Context) {
     suspend fun getCarById(carId: String, isSpecialCarsEnabled: Boolean): CarSpecs {
         return try {
             if (isSpecialCarsEnabled) {
-                RetrofitClient.instance.getCarByIdFromSpecial(carId)
+                api.getCarByIdFromSpecial(carId)
             } else {
-                RetrofitClient.instance.getCarByIdFromAll(carId)
+                api.getCarByIdFromAll(carId)
             }
         } catch (e: Exception) {
             loadMockCars().firstOrNull { it.car_id == carId }
@@ -76,9 +79,9 @@ class CarRepository(private val context: Context) {
     suspend fun getPhotoBitmap(carId: String, isSpecialCarsEnabled: Boolean): Bitmap? {
         return try {
             val response = if (isSpecialCarsEnabled) {
-                RetrofitClient.instance.getPhotoByIdFromSpecial(carId)
+                api.getPhotoByIdFromSpecial(carId)
             } else {
-                RetrofitClient.instance.getPhotoByIdFromAll(carId)
+                api.getPhotoByIdFromAll(carId)
             }
 
             response.body()?.byteStream()?.use { BitmapFactory.decodeStream(it) }
@@ -91,9 +94,9 @@ class CarRepository(private val context: Context) {
     suspend fun getUniqueValues(value: String, isSpecialCarsEnabled: Boolean): UniqueValueResponse {
         return try {
             if (isSpecialCarsEnabled) {
-                RetrofitClient.instance.getUniqueValuesFromSpecial(value)
+                api.getUniqueValuesFromSpecial(value)
             } else {
-                RetrofitClient.instance.getUniqueValuesFromAll(value)
+                api.getUniqueValuesFromAll(value)
             }
         } catch (e: Exception) {
             throw Exception("Failed to fetch unique values: ${e.message}")
@@ -103,9 +106,9 @@ class CarRepository(private val context: Context) {
     suspend fun getMinMaxValues(value: String, isSpecialCarsEnabled: Boolean): MinMaxResponse {
         return try {
             if (isSpecialCarsEnabled) {
-                RetrofitClient.instance.getMinMaxValuesFromSpecial(value)
+                api.getMinMaxValuesFromSpecial(value)
             } else {
-                RetrofitClient.instance.getMinMaxValuesFromAll(value)
+                api.getMinMaxValuesFromAll(value)
             }
         } catch (e: Exception) {
             throw  Exception("Failed to fetch min and max values: ${e.message}")

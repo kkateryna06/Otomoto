@@ -1,21 +1,27 @@
 package com.example.otomotoapp
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.otomotoapp.data.PreferencesHelper
 import com.example.otomotoapp.database.FavouriteCarsViewModel
 import com.example.otomotoapp.screens.CarDetailsScreen
 import com.example.otomotoapp.screens.FavouriteCarsScreen
 import com.example.otomotoapp.screens.FilterScreen
 import com.example.otomotoapp.screens.OtomotoMainScreen
+import com.example.otomotoapp.screens.SettingsScreen
 
 @Composable
-fun Navigation(navController: NavHostController, appBarsViewModel: AppBarsViewModel) {
-    val viewModel: MainViewModel = viewModel()
+fun Navigation(navController: NavHostController,
+               appBarsViewModel: AppBarsViewModel,
+               viewModel: MainViewModel,
+               prefs: PreferencesHelper
+) {
     val favCarsViewModel: FavouriteCarsViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Screen.MainScreen.route) {
@@ -71,6 +77,13 @@ fun Navigation(navController: NavHostController, appBarsViewModel: AppBarsViewMo
                 favCarsViewModel = favCarsViewModel,
                 navController = navController
             )
+        }
+
+        composable(
+            route = Screen.SettingsScreen.route
+        ) {
+            SettingsScreen(prefs)
+            viewModel.setCurrentScreen(Screen.SettingsScreen)
         }
     }
 }

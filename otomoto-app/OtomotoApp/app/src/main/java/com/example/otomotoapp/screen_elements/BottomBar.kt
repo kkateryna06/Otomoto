@@ -39,7 +39,7 @@ fun BottomBar(appBarsViewModel: AppBarsViewModel, screen: Screen, navController:
     else if (screen == Screen.FilterScreen) {
         FiltersBottomBar(navController)
     }
-    else if (screen == Screen.FavouriteCarsScreen) {
+    else if (screen == Screen.FavouriteCarsScreen || screen == Screen.SettingsScreen) {
         FavouriteCarsBottomBar(navController)
     }
 }
