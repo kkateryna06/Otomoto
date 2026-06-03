@@ -34,3 +34,4 @@ out/
 
 ### VS Code ###
 .vscode/
+/src/main/java/com/example/carmarketanalyzer/temp

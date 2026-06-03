@@ -15,8 +15,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -26,12 +24,11 @@ public class OtoMotoScraper {
 
     private final CarRepository carRepository;
     private static final String BASE_URL = "https://www.otomoto.pl";
-    private static final String SEARCH_URL = "https://www.otomoto.pl/osobowe";
     private static final long DELAY_MS = 1000;
 
-    public void scrapeAndSave() {
+    public void scrapeAndSave(String searchUrl) {
         try {
-            scrapeListings(SEARCH_URL);
+            scrapeListings(searchUrl);
             log.info("Scraping completed successfully");
         } catch (IOException e) {
             log.error("Error during scraping", e);

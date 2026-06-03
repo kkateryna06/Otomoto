@@ -1,34 +1,58 @@
 package com.example.carmarketanalyzer;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/scraper")
 @RequiredArgsConstructor
 public class ScraperController {
 
-    private final OtoMotoScraper otoMotoScraper;
+    private final ScraperService scraperService;
 
     @GetMapping("/scrape")
     public String startScraping() {
-        log.info("Scraping started");
-        new Thread(() -> {
-            try {
-                otoMotoScraper.scrapeAndSave();
-            } catch (Exception e) {
-                log.error("Scraping error", e);
-            }
-        }).start();
-        return "Scraping started in background. Check logs for progress.";
+        boolean started = scraperService.startScraping();
+
+        if (!started) {
+            return "Scraper is already running.";
+        }
+
+        return "Scraping started in background.";
     }
 
     @GetMapping("/status")
-    public String getStatus() {
-        return "Scraper is running";
+    public ScraperStatusResponse getStatus() {
+        return scraperService.getStatus();
+    }
+
+    @GetMapping("/settings")
+    public ScraperSettingsResponse getSettings() {
+        return scraperService.getSettings();
+    }
+
+    @PutMapping("/settings")
+    public ScraperSettingsResponse updateSettings(@RequestBody ScraperSettingsRequest request) {
+        try {
+            return scraperService.updateSettings(request);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
+    }
+
+    @PostMapping("/schedule")
+    public ScraperStatusResponse configureSchedule(@RequestBody ScraperScheduleRequest request) {
+        try {
+            return scraperService.configureSchedule(request);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
     }
 }
