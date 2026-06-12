@@ -28,6 +28,17 @@ public class ScraperController {
         return "Scraping started in background.";
     }
 
+    @GetMapping("/recheck")
+    public String startRechecking() {
+        boolean started = scraperService.startRechecking();
+
+        if (!started) {
+            return "Scraper is already running.";
+        }
+
+        return "Listing recheck started in background.";
+    }
+
     @GetMapping("/status")
     public ScraperStatusResponse getStatus() {
         return scraperService.getStatus();
@@ -51,6 +62,15 @@ public class ScraperController {
     public ScraperStatusResponse configureSchedule(@RequestBody ScraperScheduleRequest request) {
         try {
             return scraperService.configureSchedule(request);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
+    }
+
+    @PostMapping("/recheck/schedule")
+    public ScraperStatusResponse configureRecheckSchedule(@RequestBody ScraperScheduleRequest request) {
+        try {
+            return scraperService.configureRecheckSchedule(request);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
         }

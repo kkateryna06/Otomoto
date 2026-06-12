@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Instant;
 import java.util.HashMap;
 
 @Data
@@ -20,8 +21,8 @@ public class Car {
     private String model;
     private String version;
     private String generation;
-    private int year;
-    private int mileage;
+    private Integer year;
+    private Integer mileage;
     @Column(name = "fuel_type")
     private String fuelType;
     private Integer engineCapacity;
@@ -47,4 +48,16 @@ public class Car {
     private String htmlPath;
     @Column(columnDefinition = "TEXT")
     private String description;
+    @Column(name = "posted_at")
+    private Instant postedAt;
+    @Column(name = "is_actual", nullable = false)
+    private boolean actual = true;
+    @Column(name = "last_seen_at")
+    private Instant lastSeenAt;
+    @Column(name = "last_checked_at")
+    private Instant lastCheckedAt;
+    @Column(name = "disappeared_at")
+    private Instant disappearedAt;
+    @Column(name = "unavailable_checks_count", nullable = false)
+    private int unavailableChecksCount = 0;
 }

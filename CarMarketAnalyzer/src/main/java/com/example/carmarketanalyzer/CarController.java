@@ -6,8 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * REST контроллер для работы с машинами из БД
- * Позволяет получать сохраненные данные о машинах
+ * REST controller for reading and manually managing stored car listings.
  */
 @RestController
 @RequestMapping("/api/cars")
@@ -20,7 +19,7 @@ public class CarController {
     }
 
     /**
-     * Получить все машины
+     * Returns all stored listings.
      */
     @GetMapping
     public List<Car> getCars() {
@@ -28,7 +27,7 @@ public class CarController {
     }
 
     /**
-     * Получить машину по ID
+     * Returns a single listing by database ID.
      */
     @GetMapping("/{id}")
     public Car getCarById(@PathVariable Long id) {
@@ -36,7 +35,7 @@ public class CarController {
     }
 
     /**
-     * Получить количество машин в БД
+     * Returns the total number of stored listings.
      */
     @GetMapping("/count")
     public long getCarCount() {
@@ -44,7 +43,7 @@ public class CarController {
     }
 
     /**
-     * Сохранить машину вручную
+     * Saves a listing manually. Scraper-managed fields can still be updated later by URL rechecks.
      */
     @PostMapping
     public Car saveCar(@RequestBody Car car) {
@@ -52,7 +51,7 @@ public class CarController {
     }
 
     /**
-     * Удалить машину
+     * Deletes a listing by database ID.
      */
     @DeleteMapping("/{id}")
     public void deleteCar(@PathVariable Long id) {

@@ -28,6 +28,8 @@ public class ScraperService {
     private static final String SCHEDULE_MODE_DISABLED = "disabled";
     private static final String SCHEDULE_MODE_INTERVAL = "interval";
     private static final String SCHEDULE_MODE_DAILY = "daily";
+    private static final int DEFAULT_MAX_RECHECK_LISTINGS_PER_RUN = 100;
+    private static final int MAX_RECHECK_LISTINGS_PER_RUN_LIMIT = 1000;
 
     private final OtoMotoScraper otoMotoScraper;
     private final TaskScheduler scraperTaskScheduler;
@@ -41,10 +43,17 @@ public class ScraperService {
     private volatile Duration interval = DEFAULT_INTERVAL;
     private volatile LocalTime timeOfDay;
     private volatile Instant nextRunAt;
+    private volatile ScheduledFuture<?> recheckScheduledTask;
+    private volatile boolean recheckScheduleEnabled;
+    private volatile String recheckScheduleMode = SCHEDULE_MODE_DISABLED;
+    private volatile Duration recheckInterval = DEFAULT_INTERVAL;
+    private volatile LocalTime recheckTimeOfDay;
+    private volatile Instant recheckNextRunAt;
     private volatile Instant lastStartedAt;
     private volatile Instant lastFinishedAt;
     private volatile String lastTrigger;
     private volatile String searchUrl = DEFAULT_SEARCH_URL;
+    private volatile int maxRecheckListingsPerRun = DEFAULT_MAX_RECHECK_LISTINGS_PER_RUN;
     private volatile String lastSearchUrl;
     private volatile String lastResult = "Never run";
 
@@ -54,6 +63,15 @@ public class ScraperService {
         }
 
         scraperTaskExecutor.execute(() -> runScraper("manual"));
+        return true;
+    }
+
+    public boolean startRechecking() {
+        if (!running.compareAndSet(false, true)) {
+            return false;
+        }
+
+        scraperTaskExecutor.execute(() -> runRecheck("manual-recheck"));
         return true;
     }
 
@@ -93,8 +111,44 @@ public class ScraperService {
         }
     }
 
+    public ScraperStatusResponse configureRecheckSchedule(ScraperScheduleRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("recheck schedule request is required");
+        }
+
+        synchronized (scheduleLock) {
+            cancelRecheckScheduledTask();
+            recheckScheduleEnabled = request.enabled();
+
+            if (!request.enabled()) {
+                recheckScheduleMode = SCHEDULE_MODE_DISABLED;
+                recheckNextRunAt = null;
+                return getStatus();
+            }
+
+            if (hasText(request.timeOfDay())) {
+                recheckTimeOfDay = parseTimeOfDay(request.timeOfDay());
+                recheckScheduleMode = SCHEDULE_MODE_DAILY;
+                scheduleNextDailyRecheckRun();
+            } else {
+                long intervalMinutes = parseIntervalMinutes(request.intervalMinutes());
+                recheckInterval = Duration.ofMinutes(intervalMinutes);
+                recheckTimeOfDay = null;
+                recheckScheduleMode = SCHEDULE_MODE_INTERVAL;
+                recheckNextRunAt = Instant.now().plus(recheckInterval);
+                recheckScheduledTask = scraperTaskScheduler.scheduleAtFixedRate(
+                        this::startScheduledRecheck,
+                        recheckNextRunAt,
+                        recheckInterval
+                );
+            }
+
+            return getStatus();
+        }
+    }
+
     public ScraperSettingsResponse getSettings() {
-        return new ScraperSettingsResponse(searchUrl);
+        return new ScraperSettingsResponse(searchUrl, maxRecheckListingsPerRun);
     }
 
     public ScraperSettingsResponse updateSettings(ScraperSettingsRequest request) {
@@ -104,6 +158,9 @@ public class ScraperService {
 
         String normalizedSearchUrl = normalizeSearchUrl(request.searchUrl());
         searchUrl = normalizedSearchUrl;
+        if (request.maxRecheckListingsPerRun() != null) {
+            maxRecheckListingsPerRun = parseMaxRecheckListingsPerRun(request.maxRecheckListingsPerRun());
+        }
         return getSettings();
     }
 
@@ -114,9 +171,14 @@ public class ScraperService {
                 scheduleMode,
                 interval.toMinutes(),
                 timeOfDay == null ? null : timeOfDay.toString(),
+                recheckScheduleEnabled,
+                recheckScheduleMode,
+                recheckInterval.toMinutes(),
+                recheckTimeOfDay == null ? null : recheckTimeOfDay.toString(),
                 searchUrl,
                 lastSearchUrl,
                 nextRunAt,
+                recheckNextRunAt,
                 lastStartedAt,
                 lastFinishedAt,
                 lastTrigger,
@@ -134,12 +196,32 @@ public class ScraperService {
         runScraper("scheduled");
     }
 
+    private void startScheduledRecheck() {
+        if (!running.compareAndSet(false, true)) {
+            log.info("Scheduled recheck skipped because scraper is already running");
+            updateNextRecheckIntervalRunAt();
+            return;
+        }
+
+        runRecheck("scheduled-recheck");
+    }
+
     private void startDailyScheduledScraping() {
         startScheduledScraping();
 
         synchronized (scheduleLock) {
             if (scheduleEnabled && SCHEDULE_MODE_DAILY.equals(scheduleMode)) {
                 scheduleNextDailyRun();
+            }
+        }
+    }
+
+    private void startDailyScheduledRecheck() {
+        startScheduledRecheck();
+
+        synchronized (scheduleLock) {
+            if (recheckScheduleEnabled && SCHEDULE_MODE_DAILY.equals(recheckScheduleMode)) {
+                scheduleNextDailyRecheckRun();
             }
         }
     }
@@ -154,11 +236,30 @@ public class ScraperService {
 
         try {
             log.info("Scraping started by {} with URL {}", trigger, currentSearchUrl);
-            otoMotoScraper.scrapeAndSave(currentSearchUrl);
+            otoMotoScraper.scrapeAndSave(currentSearchUrl, maxRecheckListingsPerRun);
             lastResult = "Completed";
         } catch (Exception e) {
             lastResult = "Failed: " + e.getMessage();
             log.error("Scraping failed", e);
+        } finally {
+            lastFinishedAt = Instant.now();
+            running.set(false);
+        }
+    }
+
+    private void runRecheck(String trigger) {
+        lastTrigger = trigger;
+        lastStartedAt = Instant.now();
+        lastResult = "Running";
+        updateNextRecheckIntervalRunAt();
+
+        try {
+            log.info("Listing recheck started by {}", trigger);
+            otoMotoScraper.recheckExistingListings(maxRecheckListingsPerRun);
+            lastResult = "Completed";
+        } catch (Exception e) {
+            lastResult = "Failed: " + e.getMessage();
+            log.error("Listing recheck failed", e);
         } finally {
             lastFinishedAt = Instant.now();
             running.set(false);
@@ -171,6 +272,14 @@ public class ScraperService {
         }
 
         return intervalMinutes;
+    }
+
+    private int parseMaxRecheckListingsPerRun(Integer value) {
+        if (value == null || value < 1 || value > MAX_RECHECK_LISTINGS_PER_RUN_LIMIT) {
+            throw new IllegalArgumentException("maxRecheckListingsPerRun must be between 1 and " + MAX_RECHECK_LISTINGS_PER_RUN_LIMIT);
+        }
+
+        return value;
     }
 
     private LocalTime parseTimeOfDay(String rawTimeOfDay) {
@@ -191,6 +300,18 @@ public class ScraperService {
 
         nextRunAt = nextRun.toInstant();
         scheduledTask = scraperTaskScheduler.schedule(this::startDailyScheduledScraping, nextRunAt);
+    }
+
+    private void scheduleNextDailyRecheckRun() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+        ZonedDateTime nextRun = now.with(recheckTimeOfDay);
+
+        if (!nextRun.isAfter(now)) {
+            nextRun = nextRun.plusDays(1);
+        }
+
+        recheckNextRunAt = nextRun.toInstant();
+        recheckScheduledTask = scraperTaskScheduler.schedule(this::startDailyScheduledRecheck, recheckNextRunAt);
     }
 
     private String normalizeSearchUrl(String rawSearchUrl) {
@@ -230,6 +351,14 @@ public class ScraperService {
         }
     }
 
+    private void updateNextRecheckIntervalRunAt() {
+        synchronized (scheduleLock) {
+            if (recheckScheduleEnabled && SCHEDULE_MODE_INTERVAL.equals(recheckScheduleMode)) {
+                recheckNextRunAt = Instant.now().plus(recheckInterval);
+            }
+        }
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
@@ -238,6 +367,13 @@ public class ScraperService {
         if (scheduledTask != null) {
             scheduledTask.cancel(false);
             scheduledTask = null;
+        }
+    }
+
+    private void cancelRecheckScheduledTask() {
+        if (recheckScheduledTask != null) {
+            recheckScheduledTask.cancel(false);
+            recheckScheduledTask = null;
         }
     }
 }
