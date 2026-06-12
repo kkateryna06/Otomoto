@@ -1,0 +1,531 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CarMarketAnalyzer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      color: #222;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h1,
+    h2 {
+      margin: 0 0 12px;
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    h2 {
+      font-size: 20px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    section {
+      margin: 0 0 20px;
+      padding: 16px;
+      border: 1px solid #ccc;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 4px;
+      font-weight: 600;
+    }
+
+    input,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      max-width: 700px;
+      padding: 6px;
+      border: 1px solid #999;
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    button {
+      margin: 8px 8px 0 0;
+      padding: 6px 12px;
+      border: 1px solid #777;
+      color: #111;
+      background: #eee;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #e0e0e0;
+    }
+
+    button:disabled {
+      color: #777;
+      cursor: wait;
+    }
+
+    .danger {
+      border-color: #a00;
+      color: #a00;
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      margin-bottom: 8px;
+    }
+
+    .status-row div {
+      min-width: 220px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+      border-radius: 50%;
+      background: #555;
+    }
+
+    .dot.running {
+      background: #c00;
+    }
+
+    .mode-picker label {
+      display: inline-block;
+      margin-right: 16px;
+      font-weight: 400;
+    }
+
+    .mode-picker input {
+      width: auto;
+      margin-right: 4px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .form-row > div {
+      width: 220px;
+    }
+
+    .event-log {
+      max-height: 220px;
+      overflow: auto;
+      margin-top: 16px;
+      padding: 10px;
+      border: 1px solid #aaa;
+      background: #fff;
+      font-family: Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
+    .note {
+      color: #555;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>CarMarketAnalyzer</h1>
+
+    <section>
+      <h2>Status</h2>
+      <p><span id="statusDot" class="dot"></span><span id="runningText">Loading</span></p>
+      <div class="status-row">
+        <div><strong>Scrape schedule:</strong> <span id="scheduleText">-</span></div>
+        <div><strong>Recheck schedule:</strong> <span id="recheckScheduleText">-</span></div>
+        <div><strong>Cars:</strong> <span id="carCount">-</span></div>
+        <div><strong>Last result:</strong> <span id="lastResult">-</span></div>
+        <div><strong>Next run:</strong> <span id="nextRun">-</span></div>
+        <div><strong>Next recheck:</strong> <span id="recheckNextRun">-</span></div>
+      </div>
+      <p class="note">Status refreshes every 15 seconds.</p>
+      <button id="refreshBtn" type="button">Refresh Status</button>
+    </section>
+
+    <section>
+      <h2>Search Settings</h2>
+      <p class="note">HTTPS Otomoto URL under <code>/osobowe</code>.</p>
+
+      <label for="searchUrl">Search URL</label>
+      <textarea id="searchUrl" spellcheck="false" placeholder="https://www.otomoto.pl/osobowe"></textarea>
+
+      <label for="maxRecheckListingsPerRun">Max recheck listings per run</label>
+      <input id="maxRecheckListingsPerRun" type="number" min="1" max="1000" step="1" value="100">
+
+      <button id="saveSettingsBtn" type="button">Save Settings</button>
+      <button id="scrapeBtn" type="button">Run Scrape</button>
+      <button id="recheckBtn" type="button">Recheck Listings</button>
+
+      <div id="eventLog" class="event-log" aria-live="polite"></div>
+    </section>
+
+    <section>
+      <h2>Scrape Schedule</h2>
+
+      <div class="mode-picker" role="radiogroup" aria-label="Schedule mode">
+        <label><input type="radio" name="scheduleMode" value="disabled" checked>Disabled</label>
+        <label><input type="radio" name="scheduleMode" value="interval">Interval</label>
+        <label><input type="radio" name="scheduleMode" value="daily">Daily</label>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label for="intervalMinutes">Interval minutes</label>
+          <input id="intervalMinutes" type="number" min="1" step="1" value="60">
+        </div>
+        <div>
+          <label for="timeOfDay">Daily time</label>
+          <input id="timeOfDay" type="time" value="03:00">
+        </div>
+      </div>
+
+      <button id="applyScheduleBtn" type="button">Apply Schedule</button>
+      <button id="disableScheduleBtn" class="danger" type="button">Disable</button>
+    </section>
+
+    <section>
+      <h2>Recheck Schedule</h2>
+
+      <div class="mode-picker" role="radiogroup" aria-label="Recheck schedule mode">
+        <label><input type="radio" name="recheckScheduleMode" value="disabled" checked>Disabled</label>
+        <label><input type="radio" name="recheckScheduleMode" value="interval">Interval</label>
+        <label><input type="radio" name="recheckScheduleMode" value="daily">Daily</label>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label for="recheckIntervalMinutes">Interval minutes</label>
+          <input id="recheckIntervalMinutes" type="number" min="1" step="1" value="180">
+        </div>
+        <div>
+          <label for="recheckTimeOfDay">Daily time</label>
+          <input id="recheckTimeOfDay" type="time" value="06:00">
+        </div>
+      </div>
+
+      <button id="applyRecheckScheduleBtn" type="button">Apply Recheck Schedule</button>
+      <button id="disableRecheckScheduleBtn" class="danger" type="button">Disable</button>
+    </section>
+  </main>
+<script>
+    const api = {
+      status: "/api/scraper/status",
+      settings: "/api/scraper/settings",
+      scrape: "/api/scraper/scrape",
+      recheck: "/api/scraper/recheck",
+      schedule: "/api/scraper/schedule",
+      recheckSchedule: "/api/scraper/recheck/schedule",
+      count: "/api/cars/count"
+    };
+
+    const elements = {
+      searchUrl: document.querySelector("#searchUrl"),
+      statusDot: document.querySelector("#statusDot"),
+      runningText: document.querySelector("#runningText"),
+      scheduleText: document.querySelector("#scheduleText"),
+      recheckScheduleText: document.querySelector("#recheckScheduleText"),
+      carCount: document.querySelector("#carCount"),
+      lastResult: document.querySelector("#lastResult"),
+      nextRun: document.querySelector("#nextRun"),
+      recheckNextRun: document.querySelector("#recheckNextRun"),
+      intervalMinutes: document.querySelector("#intervalMinutes"),
+      timeOfDay: document.querySelector("#timeOfDay"),
+      maxRecheckListingsPerRun: document.querySelector("#maxRecheckListingsPerRun"),
+      recheckIntervalMinutes: document.querySelector("#recheckIntervalMinutes"),
+      recheckTimeOfDay: document.querySelector("#recheckTimeOfDay"),
+      eventLog: document.querySelector("#eventLog"),
+      buttons: [...document.querySelectorAll("button")]
+    };
+
+    document.querySelector("#saveSettingsBtn").addEventListener("click", saveSettings);
+    document.querySelector("#scrapeBtn").addEventListener("click", () => startBackgroundJob(api.scrape, "Scrape"));
+    document.querySelector("#recheckBtn").addEventListener("click", () => startBackgroundJob(api.recheck, "Recheck"));
+    document.querySelector("#refreshBtn").addEventListener("click", refreshAll);
+    document.querySelector("#applyScheduleBtn").addEventListener("click", applySchedule);
+    document.querySelector("#disableScheduleBtn").addEventListener("click", () => configureSchedule({ enabled: false }));
+    document.querySelector("#applyRecheckScheduleBtn").addEventListener("click", applyRecheckSchedule);
+    document.querySelector("#disableRecheckScheduleBtn").addEventListener("click", () => configureRecheckSchedule({ enabled: false }));
+
+    boot();
+    setInterval(refreshAll, 15000);
+
+    async function boot() {
+      await refreshAll();
+      log("UI loaded. Settings can be changed from this page.");
+    }
+
+    async function refreshAll() {
+      await Promise.all([loadStatus(), loadSettings(), loadCarCount()]);
+    }
+
+    async function loadStatus() {
+      const status = await requestJson(api.status);
+      elements.statusDot.classList.toggle("running", status.running);
+      elements.runningText.textContent = status.running ? "Running" : "Idle";
+      elements.scheduleText.textContent = formatSchedule(status.scheduleEnabled, status.scheduleMode, status.intervalMinutes, status.timeOfDay);
+      elements.recheckScheduleText.textContent = formatSchedule(status.recheckScheduleEnabled, status.recheckScheduleMode, status.recheckIntervalMinutes, status.recheckTimeOfDay);
+      elements.lastResult.textContent = status.lastResult || "-";
+      elements.nextRun.textContent = formatDate(status.nextRunAt);
+      elements.recheckNextRun.textContent = formatDate(status.recheckNextRunAt);
+      syncScheduleForm(status);
+      syncRecheckScheduleForm(status);
+    }
+
+    async function loadSettings() {
+      const settings = await requestJson(api.settings);
+      elements.searchUrl.value = settings.searchUrl || "";
+      elements.maxRecheckListingsPerRun.value = settings.maxRecheckListingsPerRun || 100;
+    }
+
+    async function loadCarCount() {
+      const count = await requestText(api.count);
+      elements.carCount.textContent = count || "0";
+    }
+
+    async function saveSettings() {
+      const searchUrl = elements.searchUrl.value.trim();
+      const maxRecheckListingsPerRun = Number(elements.maxRecheckListingsPerRun.value);
+      if (!searchUrl) {
+        log("Search URL is required.");
+        return;
+      }
+      if (!Number.isInteger(maxRecheckListingsPerRun) || maxRecheckListingsPerRun < 1 || maxRecheckListingsPerRun > 1000) {
+        log("Max recheck listings per run must be between 1 and 1000.");
+        return;
+      }
+
+      await runWithDisabledButtons(async () => {
+        await requestJson(api.settings, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ searchUrl, maxRecheckListingsPerRun })
+        });
+        log("Settings saved.");
+        await refreshAll();
+      });
+    }
+
+    async function startBackgroundJob(url, label) {
+      await runWithDisabledButtons(async () => {
+        const response = await requestText(url);
+        log(`${label}: ${response}`);
+        await refreshAll();
+      });
+    }
+
+    async function applySchedule() {
+      const mode = selectedScheduleMode();
+      if (mode === "disabled") {
+        await configureSchedule({ enabled: false });
+        return;
+      }
+
+      if (mode === "interval") {
+        const intervalMinutes = Number(elements.intervalMinutes.value);
+        if (!Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
+          log("Interval minutes must be at least 1.");
+          return;
+        }
+        await configureSchedule({ enabled: true, intervalMinutes });
+        return;
+      }
+
+      const timeOfDay = elements.timeOfDay.value;
+      if (!timeOfDay) {
+        log("Daily time is required.");
+        return;
+      }
+      await configureSchedule({ enabled: true, timeOfDay });
+    }
+
+    async function applyRecheckSchedule() {
+      const mode = selectedRecheckScheduleMode();
+      if (mode === "disabled") {
+        await configureRecheckSchedule({ enabled: false });
+        return;
+      }
+
+      if (mode === "interval") {
+        const intervalMinutes = Number(elements.recheckIntervalMinutes.value);
+        if (!Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
+          log("Recheck interval minutes must be at least 1.");
+          return;
+        }
+        await configureRecheckSchedule({ enabled: true, intervalMinutes });
+        return;
+      }
+
+      const timeOfDay = elements.recheckTimeOfDay.value;
+      if (!timeOfDay) {
+        log("Recheck daily time is required.");
+        return;
+      }
+      await configureRecheckSchedule({ enabled: true, timeOfDay });
+    }
+
+    async function configureSchedule(payload) {
+      await runWithDisabledButtons(async () => {
+        await requestJson(api.schedule, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        log("Schedule updated.");
+        await refreshAll();
+      });
+    }
+
+    async function configureRecheckSchedule(payload) {
+      await runWithDisabledButtons(async () => {
+        await requestJson(api.recheckSchedule, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        log("Recheck schedule updated.");
+        await refreshAll();
+      });
+    }
+
+    function syncScheduleForm(status) {
+      const mode = status.scheduleEnabled ? status.scheduleMode : "disabled";
+      const radio = document.querySelector(`input[name="scheduleMode"][value="${mode}"]`);
+      if (radio) {
+        radio.checked = true;
+      }
+      if (status.intervalMinutes) {
+        elements.intervalMinutes.value = status.intervalMinutes;
+      }
+      if (status.timeOfDay) {
+        elements.timeOfDay.value = status.timeOfDay;
+      }
+    }
+
+    function syncRecheckScheduleForm(status) {
+      const mode = status.recheckScheduleEnabled ? status.recheckScheduleMode : "disabled";
+      const radio = document.querySelector(`input[name="recheckScheduleMode"][value="${mode}"]`);
+      if (radio) {
+        radio.checked = true;
+      }
+      if (status.recheckIntervalMinutes) {
+        elements.recheckIntervalMinutes.value = status.recheckIntervalMinutes;
+      }
+      if (status.recheckTimeOfDay) {
+        elements.recheckTimeOfDay.value = status.recheckTimeOfDay;
+      }
+    }
+
+    function selectedScheduleMode() {
+      return document.querySelector('input[name="scheduleMode"]:checked').value;
+    }
+
+    function selectedRecheckScheduleMode() {
+      return document.querySelector('input[name="recheckScheduleMode"]:checked').value;
+    }
+
+    function formatSchedule(enabled, mode, intervalMinutes, timeOfDay) {
+      if (!enabled) {
+        return "Disabled";
+      }
+      if (mode === "daily") {
+        return `Daily ${timeOfDay || ""}`.trim();
+      }
+      if (mode === "interval") {
+        return `Every ${intervalMinutes} min`;
+      }
+      return mode || "-";
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return "-";
+      }
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }).format(new Date(value));
+    }
+
+    async function runWithDisabledButtons(task) {
+      setButtonsDisabled(true);
+      try {
+        await task();
+      } catch (error) {
+        log(`Error: ${error.message}`);
+      } finally {
+        setButtonsDisabled(false);
+      }
+    }
+
+    function setButtonsDisabled(disabled) {
+      elements.buttons.forEach((button) => {
+        button.disabled = disabled;
+      });
+    }
+
+    async function requestJson(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      return response.json();
+    }
+
+    async function requestText(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      return response.text();
+    }
+
+    function log(message) {
+      const stamp = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).format(new Date());
+      elements.eventLog.textContent = `[${stamp}] ${message}\n${elements.eventLog.textContent}`;
+    }
+  </script>
+</body>
+</html>
+
