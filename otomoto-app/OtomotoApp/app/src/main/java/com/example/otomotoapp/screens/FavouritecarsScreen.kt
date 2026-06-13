@@ -23,13 +23,12 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState(emptyList())
     val carList by viewModel.favouriteCarsSpecsList.observeAsState(emptyList())
     val errorMessage by viewModel.errorMessage.observeAsState("")
-    val isSpecialCarEnabled by viewModel.isSpecialCarEnabled.observeAsState(false)
 
 
     if (favCarsList.isNotEmpty()) {
-        LaunchedEffect(favCarsList, isSpecialCarEnabled) {
+        LaunchedEffect(favCarsList) {
             if (favCarsList.isNotEmpty()) {
-                viewModel.fetchFavouriteCarsSpecs(favCarsList, isSpecialCarEnabled)
+                viewModel.fetchFavouriteCarsSpecs(favCarsList)
             }
         }
 
@@ -42,7 +41,7 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
         }
         Column(modifier = Modifier.fillMaxSize()) {
 
-            CarAd(navController, carList, isSpecialCarEnabled, favCarsList, favCarsViewModel, viewModel, {viewModel.fetchNextPage()})
+            CarAd(navController, carList, favCarsList, favCarsViewModel, viewModel)
         }
     }
 

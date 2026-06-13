@@ -25,13 +25,13 @@ class FavouriteCarsViewModel: ViewModel() {
         }.launchIn(viewModelScope)
     }
 
-    fun addFavCar(id: Long) {
+    fun addFavCar(id: String) {
         viewModelScope.launch {
             favouriteCarsRepository.addFavouriteCar(id)
         }
     }
 
-    fun deleteFavCar(id: Long) {
+    fun deleteFavCar(id: String) {
         viewModelScope.launch {
             favouriteCarsRepository.deleteFavouriteCar(id)
         }

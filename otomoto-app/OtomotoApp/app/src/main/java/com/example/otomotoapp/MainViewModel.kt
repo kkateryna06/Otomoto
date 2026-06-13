@@ -1,9 +1,8 @@
 package com.example.otomotoapp
 
 import android.app.Application
-import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -11,28 +10,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.data.FilterData
-import com.example.otomotoapp.data.MinMaxResponse
 import com.example.otomotoapp.data.PreferencesHelper
-import com.example.otomotoapp.data.UniqueValueResponse
 import com.example.otomotoapp.database.FavouriteCar
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-open class MainViewModel(application: Application, prefs: PreferencesHelper) : AndroidViewModel(application) {
-    // Screens
-    private val _currentScreen = MutableLiveData<Screen>(Screen.MainScreen)
-    val currentScreen: LiveData<Screen> = _currentScreen
-
-    fun setCurrentScreen(screen: Screen) {
-        _currentScreen.value = screen
-    }
-
-
+open class MainViewModel(application: Application, private val prefs: PreferencesHelper) : AndroidViewModel(application) {
     private val repository = CarRepository(application, prefs)
 
     private val _filterOptions = MutableLiveData(FilterData())
@@ -44,16 +28,7 @@ open class MainViewModel(application: Application, prefs: PreferencesHelper) : A
 
     private val _carSpecs = MutableLiveData<CarSpecs?>()
     val carSpecs: LiveData<CarSpecs?> = _carSpecs
-
-    // Live Data for special car switch
-    private val _isSpecialCarEnabled = MutableLiveData<Boolean>(false)
-    open val isSpecialCarEnabled: LiveData<Boolean> = _isSpecialCarEnabled
-
-    fun toggleSpecialCarSwitch(isEnabled: Boolean) {
-        _isSpecialCarEnabled.value = isEnabled
-        _baseFilterData.value = null
-        resetUserFilters()
-    }
+    private var loadingCarId: String? = null
 
     // LiveData for error messages
     private val _errorMessage = MutableLiveData<String?>()
@@ -103,30 +78,51 @@ open class MainViewModel(application: Application, prefs: PreferencesHelper) : A
     val maxUrbanConsumption: LiveData<Float?> = _maxUrbanConsumption
 
 
-    private val _userFilterData = MutableStateFlow<FilterData?>(null)
-    val userFilterData: StateFlow<FilterData?> = _userFilterData
+    private val _draftFilterData = MutableStateFlow<FilterData?>(null)
+    val draftFilterData: StateFlow<FilterData?> = _draftFilterData
+
+    private val _appliedFilterData = MutableStateFlow(FilterData())
+    val appliedFilterData: StateFlow<FilterData> = _appliedFilterData
 
     private val _baseFilterData = MutableStateFlow<FilterData?>(null)
     val baseFilterData : StateFlow<FilterData?> = _baseFilterData
+    private var isFilterMetadataLoading = false
 
     fun setBaseFilterData(data: FilterData) {
         if (_baseFilterData.value == null) {
             _baseFilterData.value = data
-            _userFilterData.value = data
+            _draftFilterData.value = data
+        }
+    }
+
+    fun loadFilterMetadata() {
+        if (_baseFilterData.value != null || isFilterMetadataLoading) return
+
+        isFilterMetadataLoading = true
+        viewModelScope.launch {
+            try {
+                setBaseFilterData(FilterData())
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Error loading filter metadata: ${e.message}"
+            } finally {
+                isFilterMetadataLoading = false
+            }
         }
     }
 
     fun updateFilterData(update: FilterData.() -> FilterData) {
-        val currentData = _userFilterData.value
+        val currentData = _draftFilterData.value
         val newData = currentData?.update()
-        _userFilterData.value = newData
-        Log.d("DEBUG", "userFilterData was updated = ${userFilterData.value}")
+        _draftFilterData.value = newData
     }
 
     fun resetUserFilters() {
-        _userFilterData.value = _baseFilterData.value
-        resetPaginationAndFetch()
-        Log.d("DEBUG", "userFilters: ${userFilterData.value}")
+        _draftFilterData.value = _baseFilterData.value
+    }
+
+    fun applyDraftFilters() {
+        _appliedFilterData.value = _draftFilterData.value ?: FilterData()
     }
 
     fun addToFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
@@ -154,13 +150,12 @@ open class MainViewModel(application: Application, prefs: PreferencesHelper) : A
 
         viewModelScope.launch {
             try {
-                val filters = _userFilterData.value ?: FilterData()
+                val filters = _appliedFilterData.value
 
                 val newCars = repository.getCars(
-                    isSpecialCarsEnabled = _isSpecialCarEnabled.value ?: false,
                     mark = filters.markList,
-                    minPrice = filters.minPrice,
-                    maxPrice = filters.maxPrice,
+//                    minPrice = filters.minPrice,
+//                    maxPrice = filters.maxPrice,
                     minYear = filters.minYear.toInt(),
                     maxYear = filters.maxYear.toInt(),
                     bodyType = filters.bodyTypeList,
@@ -201,65 +196,25 @@ open class MainViewModel(application: Application, prefs: PreferencesHelper) : A
     }
 
     fun getCarById(carId: String) {
+        loadingCarId = carId
+        _carSpecs.value = null
         viewModelScope.launch {
             try {
-                val car = repository.getCarById(carId, _isSpecialCarEnabled.value ?: false)
-                _carSpecs.value = car
-                _errorMessage.value = null
+                val car = repository.getCarById(carId)
+                if (loadingCarId == carId) {
+                    _carSpecs.value = car
+                    _errorMessage.value = null
+                }
             } catch (e: Exception) {
-                _errorMessage.value = "Error fetching car specs: ${e.message}"
+                if (loadingCarId == carId) {
+                    _errorMessage.value = "Error fetching car specs: ${e.message}"
+                }
             }
         }
     }
 
-    private val _carPhotosLiveData = MutableLiveData<Map<String, Bitmap?>>()
-    val carPhotosLiveData: LiveData<Map<String, Bitmap?>> get() = _carPhotosLiveData
-
-
-    fun getPhotoById(carId: String) {
-        val currentMap = _carPhotosLiveData.value ?: emptyMap()
-        if (currentMap.containsKey(carId)) return
-
-        viewModelScope.launch {
-            try {
-                val carPhoto = repository.getPhotoBitmap(carId, _isSpecialCarEnabled.value ?: false)
-                _carPhotosLiveData.postValue(currentMap + (carId to carPhoto))
-                _errorMessage.postValue(null)
-            } catch (e: Exception) {
-                _errorMessage.postValue("Error fetching car photo: ${e.message}")
-            }
-        }
-    }
-
-
-    fun getUniqueValues(value: String): MutableLiveData<UniqueValueResponse?> {
-        val uniqueValuesLiveData = MutableLiveData<UniqueValueResponse?>()
-
-        viewModelScope.launch {
-            try {
-                val uniqueValues = repository.getUniqueValues(value, _isSpecialCarEnabled.value ?: false)
-                uniqueValuesLiveData.value = uniqueValues
-                _errorMessage.value = null
-            } catch (e: Exception) {
-                _errorMessage.value = "Error fetching unique values: ${e.message}"
-            }
-        }
-        return uniqueValuesLiveData
-    }
-
-    fun getMinMaxValues(value: String): MutableLiveData<MinMaxResponse?> {
-        val minMaxValuesLiveData = MutableLiveData<MinMaxResponse?>()
-
-        viewModelScope.launch {
-            try {
-                val minMaxValues = repository.getMinMaxValues(value, _isSpecialCarEnabled.value ?: false)
-                minMaxValuesLiveData.value = minMaxValues
-                _errorMessage.value = null
-            } catch (e: Exception) {
-                _errorMessage.value = "Error fetching min and max values: ${e.message}"
-            }
-        }
-        return  minMaxValuesLiveData
+    fun getPhotoUrl(carId: String): String {
+        return "${prefs.getServerUrl().trimEnd('/')}/api/cars/${Uri.encode(carId)}/photo"
     }
 
 
@@ -267,13 +222,12 @@ open class MainViewModel(application: Application, prefs: PreferencesHelper) : A
     val favouriteCarsSpecsList: LiveData<List<CarSpecs>> = _favouriteCarsSpecsList
 
     fun fetchFavouriteCarsSpecs(
-        favouriteCarsIdList: List<FavouriteCar>,
-        isSpecialCarsEnabled: Boolean
+        favouriteCarsIdList: List<FavouriteCar>
     ) {
         viewModelScope.launch {
             val result = favouriteCarsIdList.mapNotNull { favCar ->
                 try {
-                    repository.getCarById(favCar.id.toString(), isSpecialCarsEnabled)
+                    repository.getCarById(favCar.id.toString())
                 } catch (e: Exception) {
                     Log.e("FETCH_ERROR", "Error loading car ${favCar.id}: ${e.message}")
                     null

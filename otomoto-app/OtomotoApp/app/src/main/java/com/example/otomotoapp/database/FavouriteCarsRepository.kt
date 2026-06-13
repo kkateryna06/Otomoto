@@ -9,11 +9,11 @@ class FavouriteCarsRepository(
         return favouriteCarsDao.getAll()
     }
 
-    suspend fun addFavouriteCar(id: Long) {
+    suspend fun addFavouriteCar(id: String) {
         favouriteCarsDao.insert(FavouriteCar(id))
     }
 
-    suspend fun deleteFavouriteCar(id: Long) {
+    suspend fun deleteFavouriteCar(id: String) {
         favouriteCarsDao.delete(FavouriteCar(id))
     }
 }

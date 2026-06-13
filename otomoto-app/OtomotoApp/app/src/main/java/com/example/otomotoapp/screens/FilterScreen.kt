@@ -1,6 +1,5 @@
 package com.example.otomotoapp.screens
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -51,73 +49,21 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.otomotoapp.data.FilterData
 import com.example.otomotoapp.MainViewModel
-import com.example.otomotoapp.data.MinMaxResponse
 import com.example.otomotoapp.R
-import com.example.otomotoapp.data.UniqueValueResponse
-
-fun getMinMax(data: MinMaxResponse?): Pair<Float, Float> =
-    (data?.min_max_values?.getOrNull(0)?.toString()?.toFloatOrNull() ?: 0f) to
-            (data?.min_max_values?.getOrNull(1)?.toString()?.toFloatOrNull() ?: 0f)
-
-fun getUnique(data: UniqueValueResponse?) =
-    data?.unique_values ?: emptyList()
 
 @Composable
-fun FilterScreen(viewModel: MainViewModel, isSpecialEnabled: Boolean, navController: NavHostController) {
-    val userFilterData by viewModel.userFilterData.collectAsState()
+fun FilterScreen(viewModel: MainViewModel, navController: NavHostController) {
+    val draftFilterData by viewModel.draftFilterData.collectAsState()
     val baseFilterData by viewModel.baseFilterData.collectAsState()
 
-    val markData by viewModel.getUniqueValues("mark").observeAsState()
-    val modelData by viewModel.getUniqueValues("model").observeAsState()
-    val priceData by viewModel.getMinMaxValues("price").observeAsState()
-    val yearData by viewModel.getMinMaxValues("year").observeAsState()
-    val bodyTypeData by viewModel.getUniqueValues("body_type").observeAsState()
-    val mileageData by viewModel.getMinMaxValues("mileage").observeAsState()
-    val fuelTypeData by viewModel.getUniqueValues("fuel_type").observeAsState()
-    val engineCapacityData by viewModel.getMinMaxValues("engine_capacity").observeAsState()
-    val enginePowerData by viewModel.getMinMaxValues("engine_power").observeAsState()
-    val urbanConsumptionData by viewModel.getMinMaxValues("urban_consumption").observeAsState()
-    val extraUrbanConsumptionData by viewModel.getMinMaxValues("extra_urban_consumption").observeAsState()
-
-    val allDataLoaded = listOf(
-        markData, modelData, priceData, yearData, bodyTypeData, mileageData, fuelTypeData,
-        engineCapacityData, enginePowerData, urbanConsumptionData, extraUrbanConsumptionData
-    ).all { it != null }
-
-    LaunchedEffect(allDataLoaded) {
-        if (allDataLoaded && userFilterData == null) {
-            val cleanedMarks = markData?.copy(
-                unique_values = markData!!.unique_values.filterNotNull()
-            )
-
-            val newFilterData = FilterData(
-                markList = getUnique(cleanedMarks),
-                modelList = getUnique(modelData),
-                maxPrice = getMinMax(priceData).second,
-                minYear = getMinMax(yearData).first,
-                maxYear = getMinMax(yearData).second,
-                bodyTypeList = getUnique(bodyTypeData),
-                minMileage = getMinMax(mileageData).first,
-                maxMileage = getMinMax(mileageData).second,
-                fuelTypeList = getUnique(fuelTypeData),
-                minEngineCapacity = getMinMax(engineCapacityData).first,
-                maxEngineCapacity = getMinMax(engineCapacityData).second,
-                minEnginePower = getMinMax(enginePowerData).first,
-                maxEnginePower = getMinMax(enginePowerData).second,
-                minUrbanConsumption = getMinMax(urbanConsumptionData).first,
-                maxUrbanConsumption = getMinMax(urbanConsumptionData).second,
-                minExtraUrbanConsumption = getMinMax(extraUrbanConsumptionData).first,
-                maxExtraUrbanConsumption = getMinMax(extraUrbanConsumptionData).second
-            )
-
-            viewModel.setBaseFilterData(newFilterData)
-        }
+    LaunchedEffect(Unit) {
+        viewModel.loadFilterMetadata()
     }
 
     if (baseFilterData == null) {
         CircularProgressIndicator()
     } else {
-        test(filterData = userFilterData ?: baseFilterData!!, baseFilterData = baseFilterData!!, navController = navController, viewModel = viewModel)
+        test(filterData = draftFilterData ?: baseFilterData!!, baseFilterData = baseFilterData!!, navController = navController, viewModel = viewModel)
     }
 }
 
@@ -128,25 +74,24 @@ fun test(filterData: FilterData,
          navController: NavHostController,
          viewModel: MainViewModel
 ) {
-    val minPriceSlider = remember { mutableStateOf(filterData.minPrice) }
-    val maxPriceSlider = remember { mutableStateOf(filterData.maxPrice) }
-    val maxPrice = viewModel.getMinMaxValues("price").observeAsState().value?.min_max_values?.getOrNull(1)?.toFloatOrNull()
+    val minPriceSlider = remember(filterData.minPrice) { mutableStateOf(filterData.minPrice) }
+    val maxPriceSlider = remember(filterData.maxPrice) { mutableStateOf(filterData.maxPrice) }
 
 
-    val minYearInput = remember { mutableStateOf(filterData.minYear.toInt().toString()) }
-    val maxYearInput = remember { mutableStateOf(filterData.maxYear.toInt().toString()) }
+    val minYearInput = remember(filterData.minYear) { mutableStateOf(filterData.minYear.toInt().toString()) }
+    val maxYearInput = remember(filterData.maxYear) { mutableStateOf(filterData.maxYear.toInt().toString()) }
 
-    val minMileageInput = remember { mutableStateOf(filterData.minMileage.toInt().toString()) }
-    val maxMileageInput = remember { mutableStateOf(filterData.maxMileage.toInt().toString()) }
+    val minMileageInput = remember(filterData.minMileage) { mutableStateOf(filterData.minMileage.toInt().toString()) }
+    val maxMileageInput = remember(filterData.maxMileage) { mutableStateOf(filterData.maxMileage.toInt().toString()) }
 
-    val minEngineCapacityInput = remember { mutableStateOf(filterData.minEngineCapacity.toInt().toString()) }
-    val maxEngineCapacityInput = remember { mutableStateOf(filterData.maxEngineCapacity.toInt().toString()) }
+    val minEngineCapacityInput = remember(filterData.minEngineCapacity) { mutableStateOf(filterData.minEngineCapacity.toInt().toString()) }
+    val maxEngineCapacityInput = remember(filterData.maxEngineCapacity) { mutableStateOf(filterData.maxEngineCapacity.toInt().toString()) }
 
-    val minUrbanConsumptionInput = remember { mutableStateOf(filterData.minUrbanConsumption.toString()) }
-    val maxUrbanConsumptionInput = remember { mutableStateOf(filterData.maxUrbanConsumption.toString()) }
+    val minUrbanConsumptionInput = remember(filterData.minUrbanConsumption) { mutableStateOf(filterData.minUrbanConsumption.toString()) }
+    val maxUrbanConsumptionInput = remember(filterData.maxUrbanConsumption) { mutableStateOf(filterData.maxUrbanConsumption.toString()) }
 
-    val minExtraUrbanConsumptionInput = remember { mutableStateOf(filterData.minExtraUrbanConsumption.toString()) }
-    val maxExtraUrbanConsumptionInput = remember { mutableStateOf(filterData.maxExtraUrbanConsumption.toString()) }
+    val minExtraUrbanConsumptionInput = remember(filterData.minExtraUrbanConsumption) { mutableStateOf(filterData.minExtraUrbanConsumption.toString()) }
+    val maxExtraUrbanConsumptionInput = remember(filterData.maxExtraUrbanConsumption) { mutableStateOf(filterData.maxExtraUrbanConsumption.toString()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -165,7 +110,7 @@ fun test(filterData: FilterData,
 
                 Text(text = "Price", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(10.dp))
-                if (maxPrice != null) {
+                if (baseFilterData.maxPrice > 0f) {
                     PriceRangeSlider(minPriceSlider, maxPriceSlider, baseFilterData.maxPrice, filterData, viewModel)
                 }
                 Spacer(modifier = Modifier.height(25.dp))
@@ -253,7 +198,7 @@ fun test(filterData: FilterData,
                     viewModel.addToFilterList(
                         selector = {fuelTypeList},
                         item = item,
-                        updater = {copy(bodyTypeList = it)}
+                        updater = {copy(fuelTypeList = it)}
                     )
                 }, onRemoveFilterItem = { item ->
                     viewModel.removeFromFilterList(
@@ -344,9 +289,12 @@ fun PriceRangeSlider(
                 TextField(
                     value = minPriceSlider.value.toInt().toString(),
                     onValueChange = {
-                        minPriceSlider.value = it.toFloat()
-                        viewModel.updateFilterData {
-                            copy(minPrice = it.toFloat())
+                        val newValue = it.toFloatOrNull()
+                        if (newValue != null) {
+                            minPriceSlider.value = newValue
+                            viewModel.updateFilterData {
+                                copy(minPrice = newValue)
+                            }
                         }
                                     },
                     textStyle = TextStyle(textAlign = TextAlign.Center),
@@ -373,9 +321,12 @@ fun PriceRangeSlider(
                 TextField(
                     value = maxPriceSlider.value.toInt().toString(),
                     onValueChange = {
-                        maxPriceSlider.value = it.toFloat()
-                        viewModel.updateFilterData {
-                            copy(maxPrice = it.toFloat())
+                        val newValue = it.toFloatOrNull()
+                        if (newValue != null) {
+                            maxPriceSlider.value = newValue
+                            viewModel.updateFilterData {
+                                copy(maxPrice = newValue)
+                            }
                         }
                                     },
                     textStyle = TextStyle(textAlign = TextAlign.Center),
@@ -444,7 +395,7 @@ fun CheckboxGroup(elementList: List<String>, userElementList: List<String>, onAd
 
 @Composable
 fun CheckboxGroupElements(elementList: List<String>, userElementList: List<String>, onAddFilterItem: (String)->Unit, onRemoveFilterItem: (String)->Unit, viewModel: MainViewModel) {
-    val checkedState = remember { mutableStateMapOf<String, Boolean>().apply {
+    val checkedState = remember(elementList, userElementList) { mutableStateMapOf<String, Boolean>().apply {
         elementList.forEach { this[it] = userElementList.contains(it)}
     } }
 

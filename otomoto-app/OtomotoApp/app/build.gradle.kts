@@ -34,7 +34,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -52,10 +52,6 @@ android {
         compose = true
         viewBinding = true
         buildConfig = true
-    }
-
-    buildFeatures {
-        compose = true
     }
 
     packaging {
@@ -79,9 +75,9 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.runtime.livedata)
-    implementation(libs.firebase.appdistribution.gradle)
     implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.androidx.room.runtime.android)
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

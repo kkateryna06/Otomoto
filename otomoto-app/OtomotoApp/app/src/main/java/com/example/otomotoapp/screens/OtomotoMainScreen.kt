@@ -1,6 +1,5 @@
 package com.example.otomotoapp.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,31 +32,25 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.R
 import com.example.otomotoapp.Screen
 import com.example.otomotoapp.data.CarSpecs
-import com.example.otomotoapp.data.Location
 import com.example.otomotoapp.database.FavouriteCar
 import com.example.otomotoapp.database.FavouriteCarsViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun OtomotoMainScreen(
@@ -67,13 +60,12 @@ fun OtomotoMainScreen(
 ) {
     val carList by viewModel.carList.observeAsState(emptyList())
     val errorMessage by viewModel.errorMessage.observeAsState("")
-    val isSpecialCarEnabled by viewModel.isSpecialCarEnabled.observeAsState(false)
 
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
 
-    val userFilterData by viewModel.userFilterData.collectAsState()
+    val appliedFilterData by viewModel.appliedFilterData.collectAsState()
 
-    LaunchedEffect(userFilterData) {
+    LaunchedEffect(appliedFilterData) {
         viewModel.resetPaginationAndFetch()
     }
 
@@ -89,7 +81,6 @@ fun OtomotoMainScreen(
         CarAd(
             navController = navController,
             adds = carList,
-            isSpecialCarEnabled = isSpecialCarEnabled,
             favCarsList = favCarsList,
             favCarsViewModel = favCarsViewModel,
             viewModel = viewModel,
@@ -103,11 +94,10 @@ fun OtomotoMainScreen(
 fun CarAd(
     navController: NavHostController,
     adds: List<CarSpecs>,
-    isSpecialCarEnabled: Boolean,
     favCarsList: List<FavouriteCar>,
     favCarsViewModel: FavouriteCarsViewModel,
     viewModel: MainViewModel,
-    onLoadMoreClick: () -> Unit
+    onLoadMoreClick: (() -> Unit)? = null
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -115,19 +105,21 @@ fun CarAd(
         contentPadding = PaddingValues(8.dp),
     ) {
         items(adds.filterNotNull()) { item ->
-            val isFavCar = favCarsList.contains(FavouriteCar(item.car_id.toLong()))
-            AdItem(navController, item, isSpecialCarEnabled, isFavCar, favCarsViewModel, viewModel)
+            val isFavCar = favCarsList.contains(FavouriteCar(item.id))
+            AdItem(navController, item, isFavCar, favCarsViewModel, viewModel)
         }
 
 
-        item(span = { GridItemSpan(2) }) {
-            Button(
-                onClick = onLoadMoreClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text("Load more")
+        if (onLoadMoreClick != null) {
+            item(span = { GridItemSpan(2) }) {
+                Button(
+                    onClick = onLoadMoreClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text("Load more")
+                }
             }
         }
     }
@@ -135,25 +127,25 @@ fun CarAd(
 
 
 fun getDaysSince(listingDate: String, soldDate: String?): Int {
-    val format = SimpleDateFormat("yyy-MM-dd", Locale.getDefault())
+    val startDate = parseCarDate(listingDate) ?: return 0
+    val endDate = soldDate
+        ?.takeIf { it.isNotBlank() }
+        ?.let { parseCarDate(it) }
+        ?: LocalDate.now()
 
-    val startDate = format.parse(listingDate)
-    val endDate = soldDate?.let { format.parse(soldDate) } ?: Date()
-
-    val diff = endDate.time - startDate.time
-    return TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS).toInt()
+    return ChronoUnit.DAYS.between(startDate, endDate).toInt()
 }
+
+private fun parseCarDate(value: String): LocalDate? =
+    runCatching { LocalDate.parse(value.take(10)) }
+        .getOrElse {
+            runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrNull()
+        }
 
 @Composable
 fun AdItem(
-    navController: NavHostController, carSpecs: CarSpecs, isSpecialCarEnabled: Boolean,
+    navController: NavHostController, carSpecs: CarSpecs,
     isFavCar: Boolean, favCarsViewModel: FavouriteCarsViewModel, viewModel: MainViewModel) {
-
-    LaunchedEffect(carSpecs.car_id) {
-        viewModel.getPhotoById(carSpecs.car_id)
-    }
-    val carPhotos by viewModel.carPhotosLiveData.observeAsState()
-    val carPhoto = carPhotos?.get(carSpecs.car_id)
 
     Card(
         modifier = Modifier
@@ -161,37 +153,20 @@ fun AdItem(
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .clickable {
                 navController.navigate(
-                    Screen.CarDetailsScreen.withArgs(
-                        carSpecs.car_id,
-                        isSpecialCarEnabled
-                    )
+                    Screen.CarDetailsScreen.withArgs(carSpecs.id)
                 )
             }
     ) {
         Column()
         {
-            if (carPhoto != null) {
-                Image(
-                    bitmap = carPhoto.asImageBitmap(), contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
-                )
-            }
-            else {
-                Image(
-                    painter = painterResource(id = R.drawable.no_image),
-                    contentDescription = "car photo"
-                )
-
-//                Box(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .aspectRatio(1f),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    CircularProgressIndicator()
-//                }
-            }
+            AsyncImage(
+                model = viewModel.getPhotoUrl(carSpecs.id),
+                contentDescription = "car photo",
+                placeholder = painterResource(id = R.drawable.no_image),
+                error = painterResource(id = R.drawable.no_image),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+            )
 
             Row(verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 10.dp)) {
@@ -200,18 +175,18 @@ fun AdItem(
                         .size(10.dp)
                         .clip(RoundedCornerShape(50.dp))
                         .background(
-                            color = if(carSpecs.sell_date.isNullOrBlank()) Color.Green else Color.Red
+                            color = if(carSpecs.disappearedAt.isNullOrBlank()) Color.Green else Color.Red
                         )
                 )
                 Spacer(modifier = Modifier.width(5.dp))
-                Text(text = "${getDaysSince(carSpecs.date, carSpecs.sell_date)}")
+                Text(text = "${getDaysSince(carSpecs.postedAt, carSpecs.disappearedAt)}")
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = {
                     if (isFavCar) {
-                        favCarsViewModel.deleteFavCar(carSpecs.car_id.toLong())
+                        favCarsViewModel.deleteFavCar(carSpecs.id)
                     }
                     else {
-                        favCarsViewModel.addFavCar(carSpecs.car_id.toLong())
+                        favCarsViewModel.addFavCar(carSpecs.id)
                     }
                 }) {
                     Icon(
@@ -228,7 +203,7 @@ fun AdItem(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${carSpecs.mark} ${carSpecs.model} (${carSpecs.year})",
+                    text = "${carSpecs.brand} ${carSpecs.model} (${carSpecs.year})",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold
                 )
 
@@ -255,7 +230,7 @@ fun AdItem(
                                 .padding(start = 2.dp)
                         )
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(text = "${carSpecs.urban_consumption}")
+                        Text(text = "${carSpecs.urbanConsumption}")
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -265,7 +240,7 @@ fun AdItem(
                             modifier = Modifier.size(25.dp)
                         )
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(text = "${carSpecs.engine_power} KM")
+                        Text(text = "${carSpecs.enginePower} KM")
                     }
                 }
 

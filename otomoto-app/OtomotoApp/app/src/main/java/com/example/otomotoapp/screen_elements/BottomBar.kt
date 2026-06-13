@@ -23,10 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.otomotoapp.AppBarsViewModel
+import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.Screen
 
 @Composable
-fun BottomBar(appBarsViewModel: AppBarsViewModel, screen: Screen, navController: NavHostController) {
+fun BottomBar(appBarsViewModel: AppBarsViewModel, mainViewModel: MainViewModel, screen: Screen, navController: NavHostController) {
     val context = LocalContext.current
 
     if (screen == Screen.CarDetailsScreen) {
@@ -37,7 +38,7 @@ fun BottomBar(appBarsViewModel: AppBarsViewModel, screen: Screen, navController:
         )
     }
     else if (screen == Screen.FilterScreen) {
-        FiltersBottomBar(navController)
+        FiltersBottomBar(mainViewModel, navController)
     }
     else if (screen == Screen.FavouriteCarsScreen || screen == Screen.SettingsScreen) {
         FavouriteCarsBottomBar(navController)
@@ -64,7 +65,7 @@ fun CarDetailsBottomBar(context: Context, carLink: String, carPrice: Int) {
 }
 
 @Composable
-fun FiltersBottomBar(navController: NavHostController) {
+fun FiltersBottomBar(mainViewModel: MainViewModel, navController: NavHostController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -72,7 +73,10 @@ fun FiltersBottomBar(navController: NavHostController) {
             .padding(horizontal = 20.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically
     ) {
-        Button(onClick = { navController.navigate(Screen.MainScreen.route) }) {
+        Button(onClick = {
+            mainViewModel.applyDraftFilters()
+            navController.navigate(Screen.MainScreen.route)
+        }) {
             Text(text = "Apply Filters")
         }
     }

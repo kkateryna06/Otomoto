@@ -9,11 +9,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.otomotoapp.data.PreferencesHelper
 import com.example.otomotoapp.screen_elements.BottomBar
@@ -36,30 +37,41 @@ fun OtomotoApp() {
         factory = MainViewModelFactory(application, prefs)
     )
 
-    val currentScreen by mainViewModel.currentScreen.observeAsState()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentScreen = currentBackStackEntry?.destination.toScreen()
 
-    if (currentScreen != null) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = { SideBar(navController, drawerState, scope) }
-        ) {
-            Scaffold(
-                topBar = {
-                    TopBar(
-                        navController = navController,
-                        onMenuClick = {
-                            scope.launch { drawerState.open() }
-                        },
-                        mainViewModel = mainViewModel,
-                        title = currentScreen!!.title
-                    )
-                },
-                bottomBar = { BottomBar(appBarsViewModel, currentScreen!!, navController) }
-            ) { padding ->
-                Column(modifier = Modifier.padding(padding)) {
-                    Navigation(navController, appBarsViewModel, mainViewModel, prefs)
-                }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = { SideBar(navController, drawerState, scope) }
+    ) {
+        Scaffold(
+            topBar = {
+                TopBar(
+                    navController = navController,
+                    onMenuClick = {
+                        scope.launch { drawerState.open() }
+                    },
+                    mainViewModel = mainViewModel,
+                    title = currentScreen.title
+                )
+            },
+            bottomBar = { BottomBar(appBarsViewModel, mainViewModel, currentScreen, navController) }
+        ) { padding ->
+            Column(modifier = Modifier.padding(padding)) {
+                Navigation(navController, appBarsViewModel, mainViewModel, prefs)
             }
         }
+    }
+}
+
+private fun NavDestination?.toScreen(): Screen {
+    val route = this?.route.orEmpty()
+    return when {
+        route == Screen.MainScreen.route -> Screen.MainScreen
+        route.startsWith(Screen.CarDetailsScreen.route) -> Screen.CarDetailsScreen
+        route.startsWith(Screen.FilterScreen.route) -> Screen.FilterScreen
+        route == Screen.FavouriteCarsScreen.route -> Screen.FavouriteCarsScreen
+        route == Screen.SettingsScreen.route -> Screen.SettingsScreen
+        else -> Screen.MainScreen
     }
 }

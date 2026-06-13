@@ -1,6 +1,9 @@
 *.iml
 .gradle
 /local.properties
+*.jks
+*.keystore
+/.idea/
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -13,3 +16,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+/app/src/main/java/com/example/otomotoapp/todo

@@ -16,13 +16,11 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,8 +42,6 @@ import com.example.otomotoapp.Screen
 @Composable
 fun TopBar(mainViewModel: MainViewModel, navController: NavHostController, onMenuClick: () -> Unit,
            title: String) {
-    val isFilterMenuExpanded by mainViewModel.isSpecialCarEnabled.observeAsState()
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier
             .fillMaxWidth()
@@ -63,23 +59,15 @@ fun TopBar(mainViewModel: MainViewModel, navController: NavHostController, onMen
 
             Text(text = title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Switch(
-                    modifier = Modifier.size(30.dp),
-                    checked = isFilterMenuExpanded ?: false,
-                    onCheckedChange = { isChecked -> mainViewModel.toggleSpecialCarSwitch(isChecked) })
-                Text(
-                    text= "Special"
-                )
-            }
+            Box(modifier = Modifier.size(30.dp))
         }
 
-        SearchField(isFilterMenuExpanded ?: false, navController = navController)
+        SearchField(navController = navController)
     }
 }
 
 @Composable
-fun SearchField(isFilterMenuExpanded: Boolean, navController: NavHostController) {
+fun SearchField(navController: NavHostController) {
     var searchText by remember { mutableStateOf(TextFieldValue("Search")) }
 
     Box(modifier = Modifier.padding(15.dp)) {
@@ -94,7 +82,7 @@ fun SearchField(isFilterMenuExpanded: Boolean, navController: NavHostController)
         ) {
 
             IconButton(onClick = {
-                navController.navigate(Screen.FilterScreen.withArgs(isFilterMenuExpanded))
+                navController.navigate(Screen.FilterScreen.route)
             }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     painter = painterResource(id = R.drawable.filter), contentDescription = null,

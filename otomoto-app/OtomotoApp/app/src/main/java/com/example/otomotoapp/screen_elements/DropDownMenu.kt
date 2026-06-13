@@ -80,21 +80,21 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
     if (textMenu == "Basic") {
         Column {
             DropDownMenuContentText(parameterName = "Color", parameterValue = carSpecs.color)
-            DropDownMenuContentText(parameterName = "Number of doors", parameterValue = carSpecs.door_count.toString())
-            DropDownMenuContentText(parameterName = "Number of seats", parameterValue = carSpecs.seats_count.toString())
+            DropDownMenuContentText(parameterName = "Number of doors", parameterValue = carSpecs.doorCount.toString())
+            DropDownMenuContentText(parameterName = "Number of seats", parameterValue = carSpecs.seats.toString())
             DropDownMenuContentText(parameterName = "Generation", parameterValue = carSpecs.generation)
         }
     }
     if (textMenu == "Specification") {
         Column {
-            DropDownMenuContentText(parameterName = "Fuel type", parameterValue = carSpecs.fuel_type)
-            DropDownMenuContentText(parameterName = "Engine capacity", parameterValue = carSpecs.engine_capacity.toString())
-            DropDownMenuContentText(parameterName = "Engine power", parameterValue = carSpecs.engine_power.toString())
-            DropDownMenuContentText(parameterName = "Body type", parameterValue = carSpecs.body_type)
+            DropDownMenuContentText(parameterName = "Fuel type", parameterValue = carSpecs.fuelType)
+            DropDownMenuContentText(parameterName = "Engine capacity", parameterValue = carSpecs.engineCapacity.toString())
+            DropDownMenuContentText(parameterName = "Engine power", parameterValue = carSpecs.enginePower.toString())
+            DropDownMenuContentText(parameterName = "Body type", parameterValue = carSpecs.bodyType)
             DropDownMenuContentText(parameterName = "Gearbox", parameterValue = carSpecs.gearbox)
             DropDownMenuContentText(parameterName = "Transmission", parameterValue = carSpecs.transmission)
-            DropDownMenuContentText(parameterName = "Urban consumption", parameterValue = carSpecs.urban_consumption)
-            DropDownMenuContentText(parameterName = "Extra urban consumption", parameterValue = carSpecs.extra_urban_consumption)
+            DropDownMenuContentText(parameterName = "Urban consumption", parameterValue = carSpecs.urbanConsumption)
+            DropDownMenuContentText(parameterName = "Extra urban consumption", parameterValue = carSpecs.extraUrbanConsumption)
         }
     }
     if (textMenu == "Description") {
@@ -102,8 +102,13 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
             Text(text = carSpecs.description)
         }
     }
-    if (textMenu == "Location" && carSpecs.location.latitude != null && carSpecs.location.longitude != null) {
-        CarLocation(carSpecs)
+    if (textMenu == "Location") {
+        val location = carSpecs.location
+        if (location != null) {
+            CarLocation(location)
+        } else {
+            DropDownMenuContentText(parameterName = "Location", parameterValue = null)
+        }
     }
 }
 
@@ -123,10 +128,10 @@ fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
 }
 
 @Composable
-fun CarLocation(carSpecs: CarSpecs) {
-    val latlngPosition = LatLng(carSpecs.location.latitude, carSpecs.location.longitude)
+fun CarLocation(location: Location) {
+    val latlngPosition = LatLng(location.latitude, location.longitude)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(latlngPosition, carSpecs.location.zoom.toFloat())
+        position = CameraPosition.fromLatLngZoom(latlngPosition, location.zoom.toFloat())
     }
     val context = LocalContext.current
 //
@@ -143,7 +148,7 @@ fun CarLocation(carSpecs: CarSpecs) {
             )
             Circle(
                 center = latlngPosition,
-                radius = carSpecs.location.radius.toDouble(),
+                radius = location.radius.toDouble(),
                 fillColor = Color.Gray.copy(alpha = 0.2f),
                 strokeColor = Color.Transparent
             )
@@ -169,33 +174,33 @@ fun getAddressFromLatLng(context: Context, position: LatLng): String {
 @Composable
 fun DropDownMenuPreview() {
     val carSpecs = CarSpecs(
-        car_id = "6132407608",
-        date = "2025-01-05 10:58:16",
-        sell_date = "2025-17-05 10:58:16",
-        mark = "Honda",
+        id = "6132407608",
+        postedAt = "2025-01-05 10:58:16",
+        disappearedAt = "2025-17-05 10:58:16",
+        brand = "Honda",
         model = "Civic",
         version = "2.2i-CTDi DPF Sport",
         year = 2006,
         mileage = 214386,
-        fuel_type = "Diesel",
-        engine_capacity = 2204,
-        engine_power = 140,
-        price = 17800,
-        body_type = "Kompakt",
+        fuelType = "Diesel",
+        engineCapacity = 2204,
+        enginePower = 140,
+        priceHistory = mapOf("2025-01-05T10:58:16Z" to 17800),
+        bodyType = "Kompakt",
         gearbox = "Manualna",
         transmission = "Na przednie koła",
-        urban_consumption = "6.7 l/100km",
-        extra_urban_consumption = "4.5 l/100km",
+        urbanConsumption = "6.7 l/100km",
+        extraUrbanConsumption = "4.5 l/100km",
         color = "Czarny",
-        door_count = 5,
-        seats_count = 5,
+        doorCount = 5,
+        seats = 5,
         generation = "VIII (2006-2011)",
-        has_registration = true,
-        seller_type = "PRIVATE",
+        hasRegistration = true,
+        sellerType = "PRIVATE",
         description = "Honda Civic VIII Rok produkcji: 2006 Przebieg: 214386 km Bezwypadkowy Pochodzenie: samochód kupiony w Niemczech od pierwszego właściciela, pierwszy właściciel w Polsce Samochód z udokumentowaną historią serwisową Wyposażenie (wybrane elementy): - Silnik: 2.2 i-CDTi (140 KM, 340 Nm) - Skrzynia Manualna 6 biegowa - Napęd na przednią oś - Rozrząd na łańcuchu - koła aluminiowe 17-calowe oryginalne z salonu - Lakier czarny perłowy - Tapicerka materiałowa - Wykończenie wnętrza plastik + aluminium - Fotele z możliwością regulacji - Kanapa z dostępem do przestrzeni załadunkowej i podłokietnikiem - Kierownica multimedialna obszyta skórą - Klimatyzacja automatyczna jednostrefowa - Światła przeciwmgłowe przednie i tylne - Tempomat - Czujnik zmierzchu - Czujnik deszczu - Elektrycznie regulowane lusterka - Elektryczne szyby przednie i tylne - system Isofix - wentylowany schowek - Radio na płytę - System Honda komputera pokładowego - lusterka boczne składane + podgrzewane - System ściemniania ekranu podczas nocnej jazdy - Tylne czujniki parkowania Samochód osobiście przywiozłem od pierwszego właściciela w Niemczech w roku 2018 i jestem pierwszym właścicielem w Polsce. Auto było przeze mnie użytkowane od 2018 roku do chwili obecnej. Podczas zakupu samochodu przebieg wynosił 167 tysięcy , na chwilę obecną przebieg samochodu to 214 tysięcy. Obecnie auto posiada na sobie opony z roku 2022 z dużą ilością bieżnika, auto jest ubezpieczone do roku 2025 do października. Przegląd Techniczny robiony był w listopadzie 2024. Stan samochodu uważam na bardzo dobry bez wkładu finansowego. * Regularnie wymieniałem olej 5w-30 (1 raz w roku max do 10 tysięcy km) * Co roku wymieniane były filtr (olejowy, kabinowy, paliwa, powietrza) * Olej w skrzyni biegów wymieniałem 2 razy podczas swojego użytkowania * Klocki hamulcowe zmieniane były 2 razy * Tarcze hamulcowe zmieniane były 2 razy * Akumulator wymieniony został w roku 2023 * Samochód posiada wykupione ubezpieczenie OC do 10.2025 * Samochód posiada aktualny przegląd techniczny do 09.2025 W cenie zawarte jest: * 4 sztuki opon letnich Viking, zakupionych przeze mnie w roku 2024 * Koło dojazdowe * Transmiter do puszczania muzyki z telefonu Powodem sprzedaży jest zmiana samochodu na auto dostawcze. Na prośbę kupującego istnieje możliwość sprawdzenia stanu technicznego samochodu w dowolnie wybranym serwisie na terenie Świnoujścia Lokalizacja: Zachodniopomorskie, Świnoujście Szczegóły udzielam telefoniczne pod nr tel.  Marcel Kopaczewski.",
-        link = "https://www.otomoto.pl/osobowe/oferta/honda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
-        photo_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_photos\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
-        html_path = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
+        url = "https://www.otomoto.pl/osobowe/oferta/honda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
+        photoPath = "C:\\Users\\katya\\Desktop\\otomoto\\car_photos\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
+        htmlPath = "C:\\Users\\katya\\Desktop\\otomoto\\car_htmls\\https%3A%2F%2Fwww.otomoto.pl%2Fosobowe%2Foferta%2Fhonda-civic-honda-civic-viii-2-2i-ctdi-sport-zadbany-egzemplarz-i-bezwypadkowy-ID6H0Xm8.html",
         location = Location(12,1500,50.47625,17.33254)
     )
 

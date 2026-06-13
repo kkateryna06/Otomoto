@@ -29,49 +29,31 @@ fun Navigation(navController: NavHostController,
         composable(route = Screen.MainScreen.route) {
             OtomotoMainScreen(navController = navController,
                 viewModel = viewModel, favCarsViewModel = favCarsViewModel)
-            viewModel.setCurrentScreen(Screen.MainScreen)
         }
 
         composable(
-            route = Screen.CarDetailsScreen.route + "/{car_id}/{isSpecialEnabled}",
+            route = Screen.CarDetailsScreen.route + "/{car_id}",
             arguments = listOf(
                 navArgument("car_id") {
                     type = NavType.StringType
                     nullable = false
-            },
-                navArgument("isSpecialEnabled") {
-                    type = NavType.BoolType
-                    nullable = false
-                })
+            })
         ) { entry ->
             val carId = entry.arguments?.getString("car_id")
-            val isSpecialCarEnabled = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
             if (carId != null) {
-                viewModel.setCurrentScreen(Screen.CarDetailsScreen)
                 CarDetailsScreen(carId = carId.toString(), viewModel = viewModel,
-                    favCarsViewModel = favCarsViewModel, isSpecialCarEnabled = isSpecialCarEnabled,
+                    favCarsViewModel = favCarsViewModel,
                     navController = navController, appBarsViewModel = appBarsViewModel)
             } else {}
         }
 
-        composable(
-            route = Screen.FilterScreen.route + "/{isSpecialEnabled}",
-            arguments = listOf(
-                navArgument("isSpecialEnabled") {
-                    type = NavType.BoolType
-                    nullable = false
-                }
-            )
-        ) { entry ->
-            val isSpecialEnables = entry.arguments?.getBoolean("isSpecialEnabled") ?: false
-            viewModel.setCurrentScreen(Screen.FilterScreen)
-            FilterScreen(isSpecialEnabled = isSpecialEnables, viewModel = viewModel, navController = navController)
+        composable(route = Screen.FilterScreen.route) {
+            FilterScreen(viewModel = viewModel, navController = navController)
         }
 
         composable(
             route = Screen.FavouriteCarsScreen.route
         ) {
-            viewModel.setCurrentScreen(Screen.FavouriteCarsScreen)
             FavouriteCarsScreen(
                 viewModel = viewModel,
                 favCarsViewModel = favCarsViewModel,
@@ -83,7 +65,6 @@ fun Navigation(navController: NavHostController,
             route = Screen.SettingsScreen.route
         ) {
             SettingsScreen(prefs)
-            viewModel.setCurrentScreen(Screen.SettingsScreen)
         }
     }
 }

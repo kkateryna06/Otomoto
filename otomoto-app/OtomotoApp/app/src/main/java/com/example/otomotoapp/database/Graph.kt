@@ -13,7 +13,7 @@ object Graph {
             context = context,
             klass = FavouriteCarsDatabase::class.java,
             name = "favourite_cars.db",
-        ).build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
 
         favouriteCarsDao = favouriteCarsDatabase.favouriteCarsDao()
         favouriteCarsRepository = FavouriteCarsRepository(favouriteCarsDao)
