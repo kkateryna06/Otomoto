@@ -3,6 +3,7 @@ package com.example.carmarketanalyzer;
 import com.example.carmarketanalyzer.data.Car;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -10,8 +11,63 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-public interface CarRepository extends JpaRepository<Car, Long> {
+public interface CarRepository extends JpaRepository<Car, Long>, JpaSpecificationExecutor<Car> {
     Optional<Car> findByUrl(String url);
+
+    @Query("""
+            select distinct car.brand
+            from Car car
+            where car.brand is not null
+              and trim(car.brand) <> ''
+            order by car.brand
+            """)
+    List<String> findDistinctBrands();
+
+    @Query("""
+            select distinct car.model
+            from Car car
+            where car.model is not null
+              and trim(car.model) <> ''
+              and lower(car.brand) = lower(:brand)
+            order by car.model
+            """)
+    List<String> findDistinctModelsByBrand(@Param("brand") String brand);
+
+    @Query("""
+            select distinct car.fuelType
+            from Car car
+            where car.fuelType is not null
+              and trim(car.fuelType) <> ''
+            order by car.fuelType
+            """)
+    List<String> findDistinctFuelTypes();
+
+    @Query("""
+            select distinct car.bodyType
+            from Car car
+            where car.bodyType is not null
+              and trim(car.bodyType) <> ''
+            order by car.bodyType
+            """)
+    List<String> findDistinctBodyTypes();
+
+    @Query("""
+            select distinct car.gearbox
+            from Car car
+            where car.gearbox is not null
+              and trim(car.gearbox) <> ''
+            order by car.gearbox
+            """)
+    List<String> findDistinctGearboxes();
+
+    @Query("""
+            select distinct car.transmission
+            from Car car
+            where car.transmission is not null
+              and trim(car.transmission) <> ''
+            order by car.transmission
+            """)
+    List<String> findDistinctTransmissions();
 
     @Query("""
             select car

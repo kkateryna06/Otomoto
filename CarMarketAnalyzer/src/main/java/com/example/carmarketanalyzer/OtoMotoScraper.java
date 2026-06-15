@@ -156,6 +156,7 @@ public class OtoMotoScraper {
 
         priceHistory.put(priceHistoryKey(), price);
 
+        car.setCurrentPrice(price);
         car.setPriceHistory(priceHistory);
     }
 
@@ -245,6 +246,7 @@ public class OtoMotoScraper {
         target.setFuelType(source.getFuelType());
         target.setEngineCapacity(source.getEngineCapacity());
         target.setEnginePower(source.getEnginePower());
+        target.setCurrentPrice(source.getCurrentPrice());
         target.setBodyType(source.getBodyType());
         target.setGearbox(source.getGearbox());
         target.setTransmission(source.getTransmission());
@@ -265,6 +267,8 @@ public class OtoMotoScraper {
         if (currentPrice == null) {
             return;
         }
+
+        car.setCurrentPrice(currentPrice);
 
         HashMap<String, Integer> priceHistory = car.getPriceHistory();
         if (priceHistory == null) {

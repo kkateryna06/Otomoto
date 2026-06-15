@@ -99,7 +99,19 @@ The batch includes only listings that are due for another check:
 ```bash
 curl http://localhost:8080/api/cars/count
 curl http://localhost:8080/api/cars
+curl "http://localhost:8080/api/cars?page=0&size=20"
 ```
+
+`page` starts from 0. `size` can be from 1 to 100.
+
+Filter examples:
+
+```bash
+curl "http://localhost:8080/api/cars?page=0&size=20&brand=Audi&minYear=2018&maxPrice=60000&actual=true"
+curl "http://localhost:8080/api/cars?page=0&size=20&q=hybrid&maxMileage=120000&sortBy=currentPrice&sortDirection=asc"
+```
+
+Supported filters include `q`, `brand`, `model`, `fuelType`, `bodyType`, `gearbox`, `transmission`, `sellerType`, `minYear`, `maxYear`, `minMileage`, `maxMileage`, `minPrice`, `maxPrice`, `minEngineCapacity`, `maxEngineCapacity`, `minEnginePower`, `maxEnginePower`, `actual`, `postedFrom`, and `postedTo`.
 
 Get one car by ID:
 
@@ -278,8 +290,15 @@ PUT    /api/scraper/settings
 POST   /api/scraper/schedule
 POST   /api/scraper/recheck/schedule
 GET    /api/cars
+GET    /api/cars?page=0&size=20
 GET    /api/cars/{id}
 GET    /api/cars/count
+GET    /api/cars/brands
+GET    /api/cars/models?brand=Audi
+GET    /api/cars/fuel-types
+GET    /api/cars/body-types
+GET    /api/cars/gearboxes
+GET    /api/cars/transmissions
 POST   /api/cars
 DELETE /api/cars/{id}
 ```

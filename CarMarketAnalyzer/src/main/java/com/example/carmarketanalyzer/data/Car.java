@@ -27,6 +27,7 @@ public class Car {
     private String fuelType;
     private Integer engineCapacity;
     private Integer enginePower;
+    private Integer currentPrice;
     @JdbcTypeCode(SqlTypes.JSON)
     private HashMap<String, Integer> priceHistory;
     private String bodyType;

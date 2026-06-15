@@ -257,11 +257,39 @@ Disables scheduled listing rechecks.
 
 ```http
 GET    /api/cars
+GET    /api/cars?page=0&size=20
 GET    /api/cars/{id}
 GET    /api/cars/count
+GET    /api/cars/brands
+GET    /api/cars/models?brand=Audi
+GET    /api/cars/fuel-types
+GET    /api/cars/body-types
+GET    /api/cars/gearboxes
+GET    /api/cars/transmissions
 POST   /api/cars
 DELETE /api/cars/{id}
 ```
+
+`GET /api/cars` without query parameters returns the full list for backwards compatibility.
+Use `page` and `size` to get a Spring page response. `page` is zero-based, and `size` must be between 1 and 100.
+Any filter parameter also switches the response to a Spring page response.
+
+Lookup endpoints return sorted unique non-empty values. `GET /api/cars/models` requires the `brand` query parameter to keep the response scoped.
+
+Supported filters:
+
+| Parameter | Example |
+| --- | --- |
+| `q` | `q=audi` |
+| `brand`, `model`, `fuelType`, `bodyType`, `gearbox`, `transmission`, `sellerType` | `brand=Audi&brand=BMW` |
+| `minYear`, `maxYear` | `minYear=2018&maxYear=2024` |
+| `minMileage`, `maxMileage` | `maxMileage=120000` |
+| `minPrice`, `maxPrice` | `minPrice=20000&maxPrice=60000` |
+| `minEngineCapacity`, `maxEngineCapacity` | `minEngineCapacity=1400` |
+| `minEnginePower`, `maxEnginePower` | `minEnginePower=100` |
+| `actual` | `actual=true` |
+| `postedFrom`, `postedTo` | `postedFrom=2026-06-01T00:00:00Z` |
+| `sortBy`, `sortDirection` | `sortBy=year&sortDirection=desc` |
 
 Examples:
 
@@ -282,6 +310,10 @@ curl -X POST http://localhost:8080/api/scraper/recheck/schedule \
   -d '{"enabled": true, "intervalMinutes": 180}'
 curl http://localhost:8080/api/cars/count
 curl http://localhost:8080/api/cars
+curl "http://localhost:8080/api/cars?page=0&size=20"
+curl "http://localhost:8080/api/cars?page=0&size=20&brand=Audi&minYear=2018&maxPrice=60000&actual=true&sortBy=currentPrice&sortDirection=asc"
+curl http://localhost:8080/api/cars/brands
+curl "http://localhost:8080/api/cars/models?brand=Audi"
 curl http://localhost:8080/api/cars/1
 ```
 
@@ -326,6 +358,7 @@ Main fields:
 | `year`, `mileage` | Production year and mileage |
 | `fuelType` | Fuel type |
 | `engineCapacity`, `enginePower` | Engine displacement and power |
+| `currentPrice` | Latest known price used for filtering and sorting |
 | `priceHistory` | JSON price history. Keys are timestamps, values are prices, for example `{"2026-06-04T18:00:00Z": 45000}` |
 | `bodyType`, `gearbox`, `transmission` | Body type, gearbox, and transmission |
 | `color`, `doorCount`, `seats`, `sellerType` | Additional listing details |
