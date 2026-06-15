@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -21,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +59,8 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
         val car = carSpecs
         when {
             car != null -> {
-                LaunchedEffect(car.id) {
+                val resolvedCarId = car.id ?: carId
+                LaunchedEffect(resolvedCarId) {
                     appBarsViewModel.updateBottomInfo(
                         link = car.url ?: "",
                         price = car.price
@@ -65,7 +68,8 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
                 }
                 CarDetails(
                     carSpecs = car,
-                    carPhotoUrl = viewModel.getPhotoUrl(car.id),
+                    carId = resolvedCarId,
+                    carPhotoUrl = viewModel.getPhotoUrl(resolvedCarId),
                     favCarsViewModel = favCarsViewModel,
                     isFavCar = isFavCar
                 )
@@ -85,11 +89,11 @@ fun CarDetailsScreen(carId: String, viewModel: MainViewModel,
 }
 
 @Composable
-fun CarDetails(carSpecs: CarSpecs, carPhotoUrl: String, favCarsViewModel: FavouriteCarsViewModel,
+fun CarDetails(carSpecs: CarSpecs, carId: String, carPhotoUrl: String, favCarsViewModel: FavouriteCarsViewModel,
                isFavCar: Boolean) {
     Column(modifier = Modifier
         .fillMaxSize()
-        .padding(horizontal = 20.dp)
+        .padding(horizontal = 16.dp)
         .verticalScroll(rememberScrollState())
     ) {
         AsyncImage(
@@ -98,21 +102,24 @@ fun CarDetails(carSpecs: CarSpecs, carPhotoUrl: String, favCarsViewModel: Favour
             placeholder = painterResource(id = R.drawable.no_image),
             error = painterResource(id = R.drawable.no_image),
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().height(300.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp)
+                .clip(RoundedCornerShape(8.dp))
         )
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         Box(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = "${carSpecs.brand} ${carSpecs.model} ${carSpecs.version ?: ""} (${carSpecs.year})",
-                style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(end = 40.dp)
             )
             IconButton(onClick = {
                 if (isFavCar) {
-                    favCarsViewModel.deleteFavCar(carSpecs.id)
+                    favCarsViewModel.deleteFavCar(carId)
                 }
                 else {
-                    favCarsViewModel.addFavCar(carSpecs.id)
+                    favCarsViewModel.addFavCar(carId)
                 }
             }, modifier = Modifier.align(Alignment.CenterEnd)) {
                 Icon(
@@ -123,7 +130,7 @@ fun CarDetails(carSpecs: CarSpecs, carPhotoUrl: String, favCarsViewModel: Favour
         }
 
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         DropDownMenu(carSpecs = carSpecs, textMenu = "Basic", isDropDownMenuExpanded = true)
         DropDownMenu(carSpecs = carSpecs, textMenu = "Specification", isDropDownMenuExpanded = true)

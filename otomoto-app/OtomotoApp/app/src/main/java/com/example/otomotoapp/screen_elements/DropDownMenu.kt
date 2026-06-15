@@ -1,5 +1,6 @@
 package com.example.otomotoapp.screen_elements
 
+import androidx.compose.animation.animateContentSize
 import android.content.Context
 import android.location.Geocoder
 import androidx.compose.foundation.background
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,11 +48,18 @@ import com.google.maps.android.compose.rememberCameraPositionState
 fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, isDropDownMenuExpanded: Boolean = false, modifier: Modifier = Modifier) {
     var isDropDownMenuExpanded by remember { mutableStateOf(isDropDownMenuExpanded) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .padding(vertical = 4.dp)
+    ) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp).padding(top = 10.dp),
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -65,7 +76,8 @@ fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, isDropDownMenuExpanded: B
                         painterResource(id = R.drawable.arrow_down)
                     },
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -98,8 +110,12 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
         }
     }
     if (textMenu == "Description") {
-        Column {
-            Text(text = carSpecs.description)
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
+            Text(
+                text = carSpecs.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
     if (textMenu == "Location") {
@@ -116,15 +132,25 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
 fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 38.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Text(text = parameterName)
-        Text(text = parameterValue ?: "-")
+        Text(
+            text = parameterName,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = parameterValue ?: "-",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+        )
     }
-    Row(modifier = Modifier.fillMaxWidth().height(1.dp)
-        .background(color = MaterialTheme.colorScheme.primaryContainer)) {  }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -135,12 +161,19 @@ fun CarLocation(location: Location) {
     }
     val context = LocalContext.current
 //
-    Column {
-        Text(getAddressFromLatLng(context, latlngPosition))
+    Column(modifier = Modifier.padding(top = 10.dp)) {
+        Text(
+            getAddressFromLatLng(context, latlngPosition),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
         GoogleMap(
             onMapClick = {},
             cameraPositionState = cameraPositionState,
-            modifier = Modifier.fillMaxWidth().height(400.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(320.dp)
+                .clip(RoundedCornerShape(8.dp))
         ) {
             Marker(state = MarkerState(
                 position = latlngPosition

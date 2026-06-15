@@ -34,6 +34,9 @@ open class MainViewModel(application: Application, private val prefs: Preference
     private val _errorMessage = MutableLiveData<String?>()
     open val errorMessage: LiveData<String?> = _errorMessage
 
+    private val _mockDataMessage = MutableLiveData<String?>()
+    val mockDataMessage: LiveData<String?> = _mockDataMessage
+
     // LiveData for filters
     private val _selectedMark = MutableLiveData<String?>()
     val selectedMark: LiveData<String?> = _selectedMark
@@ -71,13 +74,6 @@ open class MainViewModel(application: Application, private val prefs: Preference
     private val _maxEngineCapacity = MutableLiveData<Float?>()
     val maxEngineCapacity: LiveData<Float?> = _maxEngineCapacity
 
-    private val _minUrbanConsumption = MutableLiveData<Float?>()
-    val minUrbanConsumption: LiveData<Float?> = _minUrbanConsumption
-
-    private val _maxUrbanConsumption = MutableLiveData<Float?>()
-    val maxUrbanConsumption: LiveData<Float?> = _maxUrbanConsumption
-
-
     private val _draftFilterData = MutableStateFlow<FilterData?>(null)
     val draftFilterData: StateFlow<FilterData?> = _draftFilterData
 
@@ -91,7 +87,7 @@ open class MainViewModel(application: Application, private val prefs: Preference
     fun setBaseFilterData(data: FilterData) {
         if (_baseFilterData.value == null) {
             _baseFilterData.value = data
-            _draftFilterData.value = data
+            _draftFilterData.value = _appliedFilterData.value
         }
     }
 
@@ -101,7 +97,7 @@ open class MainViewModel(application: Application, private val prefs: Preference
         isFilterMetadataLoading = true
         viewModelScope.launch {
             try {
-                setBaseFilterData(FilterData())
+                setBaseFilterData(repository.getFilterMetadata())
                 _errorMessage.value = null
             } catch (e: Exception) {
                 _errorMessage.value = "Error loading filter metadata: ${e.message}"
@@ -112,17 +108,18 @@ open class MainViewModel(application: Application, private val prefs: Preference
     }
 
     fun updateFilterData(update: FilterData.() -> FilterData) {
-        val currentData = _draftFilterData.value
-        val newData = currentData?.update()
+        val currentData = _draftFilterData.value ?: FilterData()
+        val newData = currentData.update().withoutModelsIfBrandIsMissing()
         _draftFilterData.value = newData
     }
 
     fun resetUserFilters() {
-        _draftFilterData.value = _baseFilterData.value
+        _draftFilterData.value = FilterData()
+        clearModelOptions()
     }
 
     fun applyDraftFilters() {
-        _appliedFilterData.value = _draftFilterData.value ?: FilterData()
+        _appliedFilterData.value = (_draftFilterData.value ?: FilterData()).withoutModelsIfBrandIsMissing()
     }
 
     fun addToFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
@@ -139,6 +136,57 @@ open class MainViewModel(application: Application, private val prefs: Preference
         }
     }
 
+    fun addBrandFilter(item: String) {
+        val newBrandList = ((_draftFilterData.value ?: FilterData()).brandList + item).distinct()
+        updateFilterData {
+            copy(brandList = newBrandList)
+        }
+        loadModelOptionsForBrands(newBrandList)
+    }
+
+    fun removeBrandFilter(item: String) {
+        val newBrandList = (_draftFilterData.value ?: FilterData()).brandList - item
+        updateFilterData {
+            copy(
+                brandList = newBrandList,
+                modelList = if (newBrandList.isEmpty()) emptyList() else modelList
+            )
+        }
+        loadModelOptionsForBrands(newBrandList)
+    }
+
+    private fun loadModelOptionsForBrands(brandList: List<String>) {
+        val normalizedBrandList = brandList.filter { it.isNotBlank() }
+
+        if (normalizedBrandList.isEmpty()) {
+            clearModelOptions()
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val modelOptions = repository.getModelFilterValues(normalizedBrandList)
+                _baseFilterData.value = (_baseFilterData.value ?: FilterData()).copy(
+                    modelList = modelOptions
+                )
+                _draftFilterData.value = (_draftFilterData.value ?: FilterData()).let { draft ->
+                    draft.copy(modelList = draft.modelList.filter { modelOptions.contains(it) })
+                }
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Error loading model metadata: ${e.message}"
+            }
+        }
+    }
+
+    private fun clearModelOptions() {
+        _baseFilterData.value = (_baseFilterData.value ?: FilterData()).copy(modelList = emptyList())
+        _draftFilterData.value = (_draftFilterData.value ?: FilterData()).copy(modelList = emptyList())
+    }
+
+    private fun FilterData.withoutModelsIfBrandIsMissing(): FilterData =
+        if (brandList.isEmpty()) copy(modelList = emptyList()) else this
+
     private var currentPage = 0
     private val pageSize = 20
     private var isLoading = false
@@ -152,24 +200,41 @@ open class MainViewModel(application: Application, private val prefs: Preference
             try {
                 val filters = _appliedFilterData.value
 
-                val newCars = repository.getCars(
-                    mark = filters.markList,
-//                    minPrice = filters.minPrice,
-//                    maxPrice = filters.maxPrice,
-                    minYear = filters.minYear.toInt(),
-                    maxYear = filters.maxYear.toInt(),
-                    bodyType = filters.bodyTypeList,
-                    minMileage = filters.minMileage,
-                    maxMileage = filters.maxMileage,
+                val result = repository.getCars(
+                    brand = filters.brandList,
+                    model = filters.modelList,
                     fuelType = filters.fuelTypeList,
-                    minEngineCapacity = filters.minEngineCapacity,
-                    maxEngineCapacity = filters.maxEngineCapacity,
-                    minUrbanConsumption = filters.minUrbanConsumption,
-                    maxUrbanConsumption = filters.maxUrbanConsumption,
+                    bodyType = filters.bodyTypeList,
+                    gearbox = filters.gearboxList,
+                    transmission = filters.transmissionList,
+                    sellerType = filters.sellerTypeList,
+                    q = filters.q,
+                    minYear = positiveIntOrNull(filters.minYear),
+                    maxYear = positiveIntOrNull(filters.maxYear),
+                    minMileage = positiveIntOrNull(filters.minMileage),
+                    maxMileage = positiveIntOrNull(filters.maxMileage),
+                    minPrice = positiveIntOrNull(filters.minPrice),
+                    maxPrice = positiveIntOrNull(filters.maxPrice),
+                    minEngineCapacity = positiveIntOrNull(filters.minEngineCapacity),
+                    maxEngineCapacity = positiveIntOrNull(filters.maxEngineCapacity),
+                    minEnginePower = positiveIntOrNull(filters.minEnginePower),
+                    maxEnginePower = positiveIntOrNull(filters.maxEnginePower),
+                    actual = filters.actual,
+                    postedFrom = filters.postedFrom,
+                    postedTo = filters.postedTo,
                     page = currentPage,
                     pageSize = pageSize
                 )
-                Log.d("DEBUG", "page size: $pageSize")
+                val newCars = result.cars
+                Log.d("DEBUG", "page size: $pageSize, page number: $currentPage")
+
+                _mockDataMessage.postValue(
+                    if (result.isMockData) {
+                        "API is unavailable or returned an invalid response. Showing mock data. Reason: ${result.fallbackReason}"
+                    } else {
+                        null
+                    }
+                )
 
                 if (newCars.isEmpty()) {
                     allLoaded = true
@@ -182,6 +247,7 @@ open class MainViewModel(application: Application, private val prefs: Preference
                 _errorMessage.postValue(null)
             } catch (e: Exception) {
                 _errorMessage.postValue("Error fetching cars: ${e.message}")
+                _mockDataMessage.postValue(null)
             } finally {
                 isLoading = false
             }
@@ -191,9 +257,13 @@ open class MainViewModel(application: Application, private val prefs: Preference
     fun resetPaginationAndFetch() {
         currentPage = 0
         allLoaded = false
+        _mockDataMessage.postValue(null)
         _carList.postValue(emptyList())
         fetchNextPage()
     }
+
+    private fun positiveIntOrNull(value: Float): Int? =
+        value.toInt().takeIf { it > 0 }
 
     fun getCarById(carId: String) {
         loadingCarId = carId

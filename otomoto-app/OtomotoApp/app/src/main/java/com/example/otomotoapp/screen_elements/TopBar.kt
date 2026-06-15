@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -42,24 +43,39 @@ import com.example.otomotoapp.Screen
 @Composable
 fun TopBar(mainViewModel: MainViewModel, navController: NavHostController, onMenuClick: () -> Unit,
            title: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(2.dp)
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
         Row(modifier = Modifier
             .fillMaxWidth()
-            .background(color = MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 19.dp, vertical = 10.dp),
+            .background(color = Color(0xFFC7C7C7))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
             ) {
             IconButton(
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(40.dp),
                 onClick = {
                     onMenuClick()
                 }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", modifier = Modifier.fillMaxSize())
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    modifier = Modifier.size(26.dp),
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
 
-            Text(text = title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-            Box(modifier = Modifier.size(30.dp))
+            Box(modifier = Modifier.size(40.dp))
         }
 
         SearchField(navController = navController)
@@ -68,25 +84,26 @@ fun TopBar(mainViewModel: MainViewModel, navController: NavHostController, onMen
 
 @Composable
 fun SearchField(navController: NavHostController) {
-    var searchText by remember { mutableStateOf(TextFieldValue("Search")) }
+    var searchText by remember { mutableStateOf(TextFieldValue("")) }
 
-    Box(modifier = Modifier.padding(15.dp)) {
+    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(25.dp))
-                .background(color = MaterialTheme.colorScheme.primaryContainer)
-                .padding(horizontal = 17.dp, vertical = 0.dp),
+                .clip(RoundedCornerShape(8.dp))
+                .background(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 10.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
 
             IconButton(onClick = {
                 navController.navigate(Screen.FilterScreen.route)
-            }, modifier = Modifier.size(24.dp)) {
+            }, modifier = Modifier.size(40.dp)) {
                 Icon(
                     painter = painterResource(id = R.drawable.filter), contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -94,9 +111,18 @@ fun SearchField(navController: NavHostController) {
                 value = searchText,
                 onValueChange = { searchText = it },
                 label = null,
+                placeholder = {
+                    Text(
+                        text = "Search",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
                 singleLine = true,
-                textStyle = TextStyle(fontSize = 15.sp),
-                modifier = Modifier.height(50.dp),
+                textStyle = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface),
+                modifier = Modifier
+                    .height(48.dp)
+                    .weight(1f),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -107,10 +133,11 @@ fun SearchField(navController: NavHostController) {
                 )
             )
 
-            IconButton(onClick = {}, modifier = Modifier.size(24.dp)) {
+            IconButton(onClick = {}, modifier = Modifier.size(40.dp)) {
                 Icon(
                     painter = painterResource(id = R.drawable.search), contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
