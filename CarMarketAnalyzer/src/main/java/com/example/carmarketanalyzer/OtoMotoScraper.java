@@ -9,16 +9,25 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -30,6 +39,11 @@ import java.util.stream.Collectors;
 public class OtoMotoScraper {
 
     private final CarRepository carRepository;
+    @Value("${app.photo-storage-dir:data/photos}")
+    private String photoStorageDir;
+    @Value("${app.max-photos-per-listing:3}")
+    private int maxPhotosPerListing;
+
     private static final String BASE_URL = "https://www.otomoto.pl";
     private static final long DELAY_MS = 1000;
     private static final int INACTIVE_CONFIRMATION_THRESHOLD = 2;
@@ -148,6 +162,7 @@ public class OtoMotoScraper {
         car.setSellerType(advert.path("seller").path("type").toString().replace("\"", ""));
         car.setDescription(advert.path("description").toString());
         car.setPostedAt(Instant.parse(advert.path("createdAt").asString()));
+        storeListingPhotos(car, advert);
 
         int price = Integer.parseInt(advert.path("price")
                 .path("value").asString());
@@ -258,9 +273,132 @@ public class OtoMotoScraper {
         target.setSellerType(source.getSellerType());
         target.setLocation(source.getLocation());
         target.setPhotoPath(source.getPhotoPath());
+        target.setPhotoUrls(source.getPhotoUrls());
+        target.setLocalPhotoPaths(source.getLocalPhotoPaths());
         target.setHtmlPath(source.getHtmlPath());
         target.setDescription(source.getDescription());
         target.setPostedAt(source.getPostedAt());
+    }
+
+    private void storeListingPhotos(Car car, JsonNode advert) {
+        List<String> photoUrls = extractPhotoUrls(advert);
+        car.setPhotoUrls(photoUrls);
+
+        if (photoUrls.isEmpty()) {
+            car.setLocalPhotoPaths(List.of());
+            car.setPhotoPath(null);
+            return;
+        }
+
+        List<String> localPhotoPaths = downloadPhotos(car, photoUrls);
+        car.setLocalPhotoPaths(localPhotoPaths);
+        car.setPhotoPath(localPhotoPaths.isEmpty() ? null : localPhotoPaths.get(0));
+    }
+
+    private List<String> extractPhotoUrls(JsonNode advert) {
+        JsonNode photos = advert.path("images").path("photos");
+        if (photos.isMissingNode() || photos.isNull()) {
+            return List.of();
+        }
+
+        List<String> photoUrls = new ArrayList<>();
+        for (JsonNode photo : photos) {
+            String photoUrl = photo.path("url").asString();
+            if (photoUrl == null || photoUrl.isBlank()) {
+                photoUrl = photo.path("id").asString();
+            }
+            if (photoUrl != null && !photoUrl.isBlank() && photoUrls.size() < maxPhotosPerListing) {
+                photoUrls.add(photoUrl);
+            }
+        }
+
+        return photoUrls;
+    }
+
+    private List<String> downloadPhotos(Car car, List<String> photoUrls) {
+        List<String> localPhotoPaths = new ArrayList<>();
+        String listingFolder = listingPhotoFolder(car);
+        Path listingDirectory = Path.of(photoStorageDir).toAbsolutePath().normalize().resolve(listingFolder);
+
+        try {
+            Files.createDirectories(listingDirectory);
+        } catch (IOException e) {
+            log.warn("Could not create photo directory for listing: {}", car.getUrl(), e);
+            return localPhotoPaths;
+        }
+
+        for (int index = 0; index < photoUrls.size(); index++) {
+            String photoUrl = photoUrls.get(index);
+            String fileName = photoFileName(index);
+            Path targetPath = listingDirectory.resolve(fileName);
+            String publicPath = "/photos/" + listingFolder + "/" + fileName;
+
+            try {
+                if (!Files.exists(targetPath)) {
+                    byte[] imageBytes = Jsoup.connect(photoUrl)
+                            .userAgent(USER_AGENT)
+                            .timeout(15000)
+                            .ignoreContentType(true)
+                            .maxBodySize(0)
+                            .execute()
+                            .bodyAsBytes();
+                    Files.write(targetPath, imageBytes);
+                }
+                localPhotoPaths.add(publicPath);
+            } catch (Exception e) {
+                log.warn("Could not download listing photo: {}", photoUrl, e);
+            }
+        }
+
+        return localPhotoPaths;
+    }
+
+    private String listingPhotoFolder(Car car) {
+        List<String> parts = new ArrayList<>();
+        parts.add(car.getBrand());
+        parts.add(car.getModel());
+        if (car.getYear() != null) {
+            parts.add(car.getYear().toString());
+        }
+
+        String label = slugify(String.join("-", parts));
+        if (label.isBlank()) {
+            label = "listing";
+        }
+
+        return label + "-" + shortHash(car.getUrl());
+    }
+
+    private String photoFileName(int index) {
+        if (index == 0) {
+            return "cover.jpg";
+        }
+
+        return "photo-%02d.jpg".formatted(index + 1);
+    }
+
+    private String slugify(String value) {
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+
+        if (normalized.length() <= 80) {
+            return normalized;
+        }
+
+        return normalized.substring(0, 80).replaceAll("-+$", "");
+    }
+
+    private String shortHash(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash).substring(0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 
     private void appendPriceIfChanged(Car car, Integer currentPrice) {

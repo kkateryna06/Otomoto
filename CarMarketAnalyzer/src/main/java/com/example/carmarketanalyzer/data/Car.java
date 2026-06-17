@@ -8,6 +8,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 
 @Data
 @Entity
@@ -15,7 +16,6 @@ import java.util.HashMap;
 public class Car {
     @Id
     @GeneratedValue
-    @Column(name = "car_id")
     private Long id;
     private String brand;
     private String model;
@@ -45,6 +45,10 @@ public class Car {
     private HashMap<String, Integer> location;
     @Column(columnDefinition = "TEXT")
     private String photoPath;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<String> photoUrls;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<String> localPhotoPaths;
     @Column(columnDefinition = "TEXT")
     private String htmlPath;
     @Column(columnDefinition = "TEXT")
