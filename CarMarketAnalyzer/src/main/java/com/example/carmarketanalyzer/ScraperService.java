@@ -236,8 +236,9 @@ public class ScraperService {
 
         try {
             log.info("Scraping started by {} with URL {}", trigger, currentSearchUrl);
-            otoMotoScraper.scrapeAndSave(currentSearchUrl, maxRecheckListingsPerRun);
-            lastResult = "Completed";
+            ScraperRunResult result = otoMotoScraper.scrapeAndSave(currentSearchUrl, maxRecheckListingsPerRun);
+            lastResult = result.summary();
+            log.info("Scraping finished by {}: {}", trigger, lastResult);
         } catch (Exception e) {
             lastResult = "Failed: " + e.getMessage();
             log.error("Scraping failed", e);
@@ -255,8 +256,9 @@ public class ScraperService {
 
         try {
             log.info("Listing recheck started by {}", trigger);
-            otoMotoScraper.recheckExistingListings(maxRecheckListingsPerRun);
-            lastResult = "Completed";
+            ScraperRunResult result = otoMotoScraper.recheckExistingListings(maxRecheckListingsPerRun);
+            lastResult = result.summary();
+            log.info("Listing recheck finished by {}: {}", trigger, lastResult);
         } catch (Exception e) {
             lastResult = "Failed: " + e.getMessage();
             log.error("Listing recheck failed", e);

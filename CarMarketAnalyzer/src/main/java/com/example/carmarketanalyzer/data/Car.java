@@ -42,7 +42,7 @@ public class Car {
     @Column(columnDefinition = "TEXT")
     private String url;
     @JdbcTypeCode(SqlTypes.JSON)
-    private HashMap<String, Integer> location;
+    private HashMap<String, Object> location;
     @Column(columnDefinition = "TEXT")
     private String photoPath;
     @JdbcTypeCode(SqlTypes.JSON)

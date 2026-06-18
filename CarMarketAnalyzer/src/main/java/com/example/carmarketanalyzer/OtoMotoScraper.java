@@ -54,21 +54,25 @@ public class OtoMotoScraper {
     private static final Duration MIDDLE_RECHECK_INTERVAL = Duration.ofHours(24);
     private static final Duration OLD_RECHECK_INTERVAL = Duration.ofHours(72);
 
-    public void scrapeAndSave(String searchUrl, int maxRecheckListingsPerRun) {
+    public ScraperRunResult scrapeAndSave(String searchUrl, int maxRecheckListingsPerRun) {
         try {
-            Set<String> scrapedUrls = scrapeListings(searchUrl);
-            recheckKnownListings(scrapedUrls, maxRecheckListingsPerRun);
-            log.info("Scraping completed successfully");
+            ScrapedListingsResult scrapedListings = scrapeListings(searchUrl);
+            ScraperRunResult recheckResult = recheckKnownListings(scrapedListings.urls(), maxRecheckListingsPerRun);
+            ScraperRunResult result = scrapedListings.runResult().plus(recheckResult);
+            log.info("Scraping completed successfully: found {}, saved {}, errors {}",
+                    result.found(), result.saved(), result.errors());
+            return result;
         } catch (IOException e) {
             log.error("Error during scraping", e);
+            return ScraperRunResult.empty().withError();
         }
     }
 
-    public void recheckExistingListings(int maxRecheckListingsPerRun) {
-        recheckKnownListings(Set.of(), maxRecheckListingsPerRun);
+    public ScraperRunResult recheckExistingListings(int maxRecheckListingsPerRun) {
+        return recheckKnownListings(Set.of(), maxRecheckListingsPerRun);
     }
 
-    private Set<String> scrapeListings(String url) throws IOException {
+    private ScrapedListingsResult scrapeListings(String url) throws IOException {
         Document doc = fetchDocument(url);
 
         Elements links = doc.select("a[href*=/oferta/]");
@@ -79,7 +83,8 @@ public class OtoMotoScraper {
 
         log.info("Found {} listings", listingLinks.size());
 
-        int count = 0;
+        int savedCount = 0;
+        int errorCount = 0;
 
         for (String listingUrl : listingLinks) {
             try {
@@ -87,19 +92,26 @@ public class OtoMotoScraper {
 
                 if (car != null && isValidCar(car)) {
                     saveOrUpdateCar(car);
-                    count++;
+                    savedCount++;
                     log.info("Saved or updated car: {} {} from {}", car.getBrand(), car.getModel(), car.getUrl());
+                } else {
+                    errorCount++;
+                    log.warn("Listing was skipped because parsed car data is incomplete: {}", listingUrl);
                 }
 
                 Thread.sleep(DELAY_MS);
 
             } catch (Exception e) {
+                errorCount++;
                 log.warn("Error parsing listing: {}", listingUrl, e);
             }
         }
 
-        log.info("Successfully saved or updated {} cars in database", count);
-        return listingLinks;
+        log.info("Search page result: found {}, saved {}, errors {}", listingLinks.size(), savedCount, errorCount);
+        return new ScrapedListingsResult(
+                listingLinks,
+                new ScraperRunResult(listingLinks.size(), savedCount, errorCount)
+        );
     }
 
     private Car parseCarFromListing(String url) {
@@ -162,6 +174,7 @@ public class OtoMotoScraper {
         car.setSellerType(advert.path("seller").path("type").toString().replace("\"", ""));
         car.setDescription(advert.path("description").toString());
         car.setPostedAt(Instant.parse(advert.path("createdAt").asString()));
+        car.setLocation(extractLocation(advert.path("seller").path("location")));
         storeListingPhotos(car, advert);
 
         int price = Integer.parseInt(advert.path("price")
@@ -193,7 +206,7 @@ public class OtoMotoScraper {
         carRepository.save(car);
     }
 
-    private void recheckKnownListings(Set<String> alreadyScrapedUrls, int maxRecheckListingsPerRun) {
+    private ScraperRunResult recheckKnownListings(Set<String> alreadyScrapedUrls, int maxRecheckListingsPerRun) {
         int queryLimit = Math.max(maxRecheckListingsPerRun + alreadyScrapedUrls.size(), maxRecheckListingsPerRun);
         Instant now = Instant.now();
         List<Car> activeCars = carRepository.findNextActualListingsForRecheck(
@@ -207,6 +220,8 @@ public class OtoMotoScraper {
         log.info("Rechecking up to {} known active listings from {} candidates", maxRecheckListingsPerRun, activeCars.size());
 
         int checkedCount = 0;
+        int savedCount = 0;
+        int errorCount = 0;
         for (Car car : activeCars) {
             if (alreadyScrapedUrls.contains(car.getUrl())) {
                 continue;
@@ -229,12 +244,16 @@ public class OtoMotoScraper {
                     appendPriceIfChanged(car, latestPrice(parsedCar.getPriceHistory()));
                     markListingSeen(car, checkedAt);
                     carRepository.save(car);
+                    savedCount++;
                 } else if (fetchResult.status() == ListingStatus.GONE) {
                     markListingUnavailable(car, checkedAt);
                     carRepository.save(car);
+                    savedCount++;
                 } else {
                     car.setLastCheckedAt(checkedAt);
                     carRepository.save(car);
+                    savedCount++;
+                    errorCount++;
                     log.warn("Listing check was inconclusive: {}", car.getUrl());
                 }
 
@@ -243,12 +262,15 @@ public class OtoMotoScraper {
             } catch (Exception e) {
                 car.setLastCheckedAt(Instant.now());
                 carRepository.save(car);
+                savedCount++;
+                errorCount++;
                 log.warn("Error rechecking listing: {}", car.getUrl(), e);
                 checkedCount++;
             }
         }
 
-        log.info("Finished rechecking {} known active listings", checkedCount);
+        log.info("Recheck result: checked {}, saved {}, errors {}", checkedCount, savedCount, errorCount);
+        return new ScraperRunResult(checkedCount, savedCount, errorCount);
     }
 
     private void copyParsedFields(Car source, Car target) {
@@ -290,9 +312,63 @@ public class OtoMotoScraper {
             return;
         }
 
-        List<String> localPhotoPaths = downloadPhotos(car, photoUrls);
+        List<String> photosToDownload = photoUrls.stream()
+                .limit(maxPhotosPerListing)
+                .toList();
+        List<String> localPhotoPaths = downloadPhotos(car, photosToDownload);
         car.setLocalPhotoPaths(localPhotoPaths);
         car.setPhotoPath(localPhotoPaths.isEmpty() ? null : localPhotoPaths.get(0));
+    }
+
+    private HashMap<String, Object> extractLocation(JsonNode location) {
+        if (location == null || location.isMissingNode() || location.isNull()) {
+            return null;
+        }
+
+        HashMap<String, Object> result = new HashMap<>();
+        putText(result, "city", location.path("city"));
+        putText(result, "postalCode", location.path("postalCode"));
+
+        JsonNode canonicals = location.path("canonicals");
+        putText(result, "region", canonicals.path("region"));
+
+        JsonNode map = location.path("map");
+        putDouble(result, "latitude", map.path("latitude"));
+        putDouble(result, "longitude", map.path("longitude"));
+        putInteger(result, "zoom", map.path("zoom"));
+        putInteger(result, "radius", map.path("radius"));
+
+        return result.isEmpty() ? null : result;
+    }
+
+    private void putText(HashMap<String, Object> target, String key, JsonNode value) {
+        String text = textValue(value);
+        if (text != null) {
+            target.put(key, text);
+        }
+    }
+
+    private void putInteger(HashMap<String, Object> target, String key, JsonNode value) {
+        Integer number = parseInteger(textValue(value));
+        if (number != null) {
+            target.put(key, number);
+        }
+    }
+
+    private void putDouble(HashMap<String, Object> target, String key, JsonNode value) {
+        Double number = parseDouble(textValue(value));
+        if (number != null) {
+            target.put(key, number);
+        }
+    }
+
+    private String textValue(JsonNode value) {
+        if (value == null || value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+
+        String text = value.asString();
+        return text == null || text.isBlank() ? null : text;
     }
 
     private List<String> extractPhotoUrls(JsonNode advert) {
@@ -307,7 +383,7 @@ public class OtoMotoScraper {
             if (photoUrl == null || photoUrl.isBlank()) {
                 photoUrl = photo.path("id").asString();
             }
-            if (photoUrl != null && !photoUrl.isBlank() && photoUrls.size() < maxPhotosPerListing) {
+            if (photoUrl != null && !photoUrl.isBlank()) {
                 photoUrls.add(photoUrl);
             }
         }
@@ -471,7 +547,7 @@ public class OtoMotoScraper {
         if (isValue) {
             if (!param.isMissingNode()) {
                 param = param.path("value");
-                return param.asString().substring(0, 1).toUpperCase() + param.asString().substring(1);
+                return param.asString();
             }
         } else {
             if (!param.isMissingNode()) {
@@ -550,5 +626,8 @@ public class OtoMotoScraper {
     }
 
     private record ListingFetchResult(ListingStatus status, Document document) {
+    }
+
+    private record ScrapedListingsResult(Set<String> urls, ScraperRunResult runResult) {
     }
 }
