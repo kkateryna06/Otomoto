@@ -58,7 +58,7 @@ fun OtomotoApp() {
             bottomBar = { BottomBar(appBarsViewModel, mainViewModel, currentScreen, navController) }
         ) { padding ->
             Column(modifier = Modifier.padding(padding)) {
-                Navigation(navController, appBarsViewModel, mainViewModel, prefs)
+                Navigation(navController, appBarsViewModel, mainViewModel)
             }
         }
     }

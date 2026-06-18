@@ -3,6 +3,7 @@ package com.example.otomotoapp.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState(emptyList())
     val carList by viewModel.favouriteCarsSpecsList.observeAsState(emptyList())
     val errorMessage by viewModel.errorMessage.observeAsState("")
+    val gridState = rememberLazyGridState()
 
 
     if (favCarsList.isNotEmpty()) {
@@ -41,7 +43,7 @@ fun FavouriteCarsScreen(viewModel: MainViewModel, favCarsViewModel: FavouriteCar
         }
         Column(modifier = Modifier.fillMaxSize()) {
 
-            CarAd(navController, carList, favCarsList, favCarsViewModel, viewModel)
+            CarAd(navController, carList, favCarsList, favCarsViewModel, viewModel, gridState)
         }
     }
 

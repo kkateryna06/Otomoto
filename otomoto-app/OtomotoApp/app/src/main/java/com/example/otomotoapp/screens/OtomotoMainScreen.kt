@@ -1,5 +1,8 @@
 package com.example.otomotoapp.screens
 
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -20,8 +23,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,10 +59,12 @@ import com.example.otomotoapp.Screen
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.database.FavouriteCar
 import com.example.otomotoapp.database.FavouriteCarsViewModel
+import com.example.otomotoapp.ui.toDisplayValueOrDash
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun OtomotoMainScreen(
     viewModel: MainViewModel,
@@ -71,9 +78,10 @@ fun OtomotoMainScreen(
     val favCarsList by favCarsViewModel.favouriteCars.collectAsState()
 
     val appliedFilterData by viewModel.appliedFilterData.collectAsState()
+    val gridState = rememberLazyGridState()
 
     LaunchedEffect(appliedFilterData) {
-        viewModel.resetPaginationAndFetch()
+        viewModel.refreshCarsForCurrentFiltersIfNeeded()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -101,12 +109,14 @@ fun OtomotoMainScreen(
             favCarsList = favCarsList,
             favCarsViewModel = favCarsViewModel,
             viewModel = viewModel,
+            gridState = gridState,
             onLoadMoreClick = { viewModel.fetchNextPage() }
         )
     }
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CarAd(
     navController: NavHostController,
@@ -114,10 +124,12 @@ fun CarAd(
     favCarsList: List<FavouriteCar>,
     favCarsViewModel: FavouriteCarsViewModel,
     viewModel: MainViewModel,
+    gridState: LazyGridState,
     onLoadMoreClick: (() -> Unit)? = null
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
+        state = gridState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -151,6 +163,7 @@ fun CarAd(
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun getDaysSince(listingDate: String, soldDate: String?): Int {
     val startDate = parseCarDate(listingDate) ?: return 0
     val endDate = soldDate
@@ -161,12 +174,14 @@ fun getDaysSince(listingDate: String, soldDate: String?): Int {
     return ChronoUnit.DAYS.between(startDate, endDate).toInt()
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 private fun parseCarDate(value: String): LocalDate? =
     runCatching { LocalDate.parse(value.take(10)) }
         .getOrElse {
             runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrNull()
         }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AdItem(
     navController: NavHostController, carSpecs: CarSpecs, carId: String,
@@ -175,6 +190,8 @@ fun AdItem(
         targetValue = if (isFavCar) 1.1f else 1f,
         label = "favoriteScale"
     )
+    val photoUrl = carSpecs.photoUrls.orEmpty().firstOrNull { it.isNotBlank() }
+        ?: viewModel.getPhotoUrl(carSpecs.photoPath)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -192,10 +209,20 @@ fun AdItem(
         Column()
         {
             AsyncImage(
-                model = viewModel.getPhotoUrl(carId),
+                model = photoUrl,
                 contentDescription = "car photo",
                 placeholder = painterResource(id = R.drawable.no_image),
                 error = painterResource(id = R.drawable.no_image),
+                onSuccess = {
+                    Log.d("CarPhoto", "List image loaded: carId=$carId, url=$photoUrl")
+                },
+                onError = {
+                    Log.e(
+                        "CarPhoto",
+                        "List image failed: carId=$carId, photoPath=${carSpecs.photoPath}, photoUrls=${carSpecs.photoUrls.orEmpty().size}, url=$photoUrl",
+                        it.result.throwable
+                    )
+                },
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -257,7 +284,7 @@ fun AdItem(
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     SpecRow(icon = R.drawable.speed, text = "${carSpecs.mileage} km")
-                    SpecRow(icon = R.drawable.gas_station, text = carSpecs.urbanConsumption ?: "-")
+                    SpecRow(icon = R.drawable.gas_station, text = carSpecs.urbanConsumption.toDisplayValueOrDash())
                     SpecRow(icon = R.drawable.engine, text = "${carSpecs.enginePower} KM")
                 }
 

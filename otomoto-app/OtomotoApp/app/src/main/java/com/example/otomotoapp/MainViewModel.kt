@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 open class MainViewModel(application: Application, private val prefs: PreferencesHelper) : AndroidViewModel(application) {
-    private val repository = CarRepository(application, prefs)
+    private var repository = CarRepository(application, prefs)
 
     private val _filterOptions = MutableLiveData(FilterData())
     val filterOptions: LiveData<FilterData> = _filterOptions
@@ -80,9 +80,25 @@ open class MainViewModel(application: Application, private val prefs: Preference
     private val _appliedFilterData = MutableStateFlow(FilterData())
     val appliedFilterData: StateFlow<FilterData> = _appliedFilterData
 
+    private val _serverUrl = MutableStateFlow(prefs.getServerUrl())
+    val serverUrl: StateFlow<String> = _serverUrl
+
     private val _baseFilterData = MutableStateFlow<FilterData?>(null)
     val baseFilterData : StateFlow<FilterData?> = _baseFilterData
     private var isFilterMetadataLoading = false
+
+    fun updateServerUrl(url: String) {
+        prefs.saveServerUrl(url)
+        val normalizedUrl = prefs.getServerUrl()
+        if (_serverUrl.value == normalizedUrl) return
+
+        _serverUrl.value = normalizedUrl
+        repository = CarRepository(getApplication(), prefs)
+        _baseFilterData.value = null
+        _draftFilterData.value = _appliedFilterData.value
+        loadedFilterData = null
+        resetPaginationAndFetch()
+    }
 
     fun setBaseFilterData(data: FilterData) {
         if (_baseFilterData.value == null) {
@@ -120,6 +136,13 @@ open class MainViewModel(application: Application, private val prefs: Preference
 
     fun applyDraftFilters() {
         _appliedFilterData.value = (_draftFilterData.value ?: FilterData()).withoutModelsIfBrandIsMissing()
+    }
+
+    fun applySearchQuery(query: String) {
+        val normalizedQuery = query.trim()
+        val updatedFilters = _appliedFilterData.value.copy(q = normalizedQuery)
+        _appliedFilterData.value = updatedFilters
+        _draftFilterData.value = updatedFilters
     }
 
     fun addToFilterList(selector: FilterData.() -> List<String>, item: String, updater: FilterData.(List<String>) -> FilterData) {
@@ -191,6 +214,7 @@ open class MainViewModel(application: Application, private val prefs: Preference
     private val pageSize = 20
     private var isLoading = false
     private var allLoaded = false
+    private var loadedFilterData: FilterData? = null
 
     fun fetchNextPage() {
         if (isLoading || allLoaded) return
@@ -254,7 +278,15 @@ open class MainViewModel(application: Application, private val prefs: Preference
         }
     }
 
-    fun resetPaginationAndFetch() {
+    fun refreshCarsForCurrentFiltersIfNeeded() {
+        val filters = _appliedFilterData.value
+        if (loadedFilterData == filters) return
+
+        loadedFilterData = filters
+        resetPaginationAndFetch()
+    }
+
+    private fun resetPaginationAndFetch() {
         currentPage = 0
         allLoaded = false
         _mockDataMessage.postValue(null)
@@ -283,8 +315,25 @@ open class MainViewModel(application: Application, private val prefs: Preference
         }
     }
 
-    fun getPhotoUrl(carId: String): String {
-        return "${prefs.getServerUrl().trimEnd('/')}/api/cars/${Uri.encode(carId)}/photo"
+    fun getPhotoUrl(photoPath: String?): String? {
+        val rawPath = photoPath?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
+            Log.d("CarPhoto", "photoPath=$rawPath, photoUrl=$rawPath")
+            return rawPath
+        }
+
+        val relativePath = rawPath
+            .replace('\\', '/')
+            .trimStart('/')
+            .let { path ->
+                if (path.startsWith("photos/")) path else "photos/$path"
+            }
+            .split('/')
+            .joinToString("/") { Uri.encode(it, "%") }
+
+        val photoUrl = "${prefs.getServerUrl().trimEnd('/')}/$relativePath"
+        Log.d("CarPhoto", "photoPath=$rawPath, relativePath=$relativePath, photoUrl=$photoUrl")
+        return photoUrl
     }
 
 

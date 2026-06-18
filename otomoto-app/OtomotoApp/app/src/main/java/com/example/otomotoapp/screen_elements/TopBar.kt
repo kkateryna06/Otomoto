@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,9 +34,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.navigation.NavHostController
 import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.R
@@ -78,13 +83,27 @@ fun TopBar(mainViewModel: MainViewModel, navController: NavHostController, onMen
             Box(modifier = Modifier.size(40.dp))
         }
 
-        SearchField(navController = navController)
+        SearchField(mainViewModel = mainViewModel, navController = navController)
     }
 }
 
 @Composable
-fun SearchField(navController: NavHostController) {
+fun SearchField(mainViewModel: MainViewModel, navController: NavHostController) {
+    val appliedFilterData by mainViewModel.appliedFilterData.collectAsState()
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
+    val submitSearch = {
+        mainViewModel.applySearchQuery(searchText.text)
+        navController.navigate(Screen.MainScreen.route) {
+            launchSingleTop = true
+            popUpTo(Screen.MainScreen.route)
+        }
+    }
+
+    LaunchedEffect(appliedFilterData.q) {
+        if (searchText.text != appliedFilterData.q) {
+            searchText = TextFieldValue(appliedFilterData.q)
+        }
+    }
 
     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(
@@ -119,6 +138,8 @@ fun SearchField(navController: NavHostController) {
                     )
                 },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { submitSearch() }),
                 textStyle = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier
                     .height(48.dp)
@@ -133,7 +154,7 @@ fun SearchField(navController: NavHostController) {
                 )
             )
 
-            IconButton(onClick = {}, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = { submitSearch() }, modifier = Modifier.size(40.dp)) {
                 Icon(
                     painter = painterResource(id = R.drawable.search), contentDescription = null,
                     modifier = Modifier.size(22.dp),

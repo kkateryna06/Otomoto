@@ -59,6 +59,7 @@ import androidx.navigation.NavHostController
 import com.example.otomotoapp.data.FilterData
 import com.example.otomotoapp.MainViewModel
 import com.example.otomotoapp.R
+import com.example.otomotoapp.ui.toDisplayValue
 
 @Composable
 fun FilterScreen(viewModel: MainViewModel, navController: NavHostController) {
@@ -134,7 +135,7 @@ fun test(filterData: FilterData,
                     viewModel.addBrandFilter(item)
                 }, onRemoveFilterItem = { item ->
                     viewModel.removeBrandFilter(item)
-                }, elementList = baseFilterData.brandList, userElementList =  filterData.brandList, viewModel =  viewModel)
+                }, elementList = baseFilterData.brandList, userElementList =  filterData.brandList, viewModel =  viewModel, formatItems = false)
                 Spacer(modifier = Modifier.height(25.dp))
 
                 Text(text = "Model", style = MaterialTheme.typography.titleLarge)
@@ -158,7 +159,7 @@ fun test(filterData: FilterData,
                             item = item,
                             updater = { copy(modelList = it) }
                         )
-                    }, elementList = baseFilterData.modelList, userElementList = filterData.modelList, viewModel = viewModel)
+                    }, elementList = baseFilterData.modelList, userElementList = filterData.modelList, viewModel = viewModel, formatItems = false)
                 }
                 Spacer(modifier = Modifier.height(25.dp))
 
@@ -419,7 +420,14 @@ private fun Float.roundToPriceStep(): Float =
     (this / PRICE_STEP).toInt() * PRICE_STEP
 
 @Composable
-fun CheckboxGroup(elementList: List<String>, userElementList: List<String>, onAddFilterItem: (String)->Unit, onRemoveFilterItem: (String)->Unit, viewModel: MainViewModel) {
+fun CheckboxGroup(
+    elementList: List<String>,
+    userElementList: List<String>,
+    onAddFilterItem: (String)->Unit,
+    onRemoveFilterItem: (String)->Unit,
+    viewModel: MainViewModel,
+    formatItems: Boolean = true
+) {
     if (elementList.size > 5) {
         val showMoreExpanded = remember { mutableStateOf(false) }
         Column(modifier = Modifier.animateContentSize()) {
@@ -449,18 +457,25 @@ fun CheckboxGroup(elementList: List<String>, userElementList: List<String>, onAd
                 }
             }
             if (!showMoreExpanded.value) {
-                CheckboxGroupElements(elementList.take(5), userElementList, onAddFilterItem, onRemoveFilterItem, viewModel)
+                CheckboxGroupElements(elementList.take(5), userElementList, onAddFilterItem, onRemoveFilterItem, viewModel, formatItems)
             } else {
-                CheckboxGroupElements(elementList, userElementList, onAddFilterItem, onRemoveFilterItem, viewModel)
+                CheckboxGroupElements(elementList, userElementList, onAddFilterItem, onRemoveFilterItem, viewModel, formatItems)
             }
         }
     } else {
-        CheckboxGroupElements(elementList, userElementList, onAddFilterItem, onRemoveFilterItem, viewModel)
+        CheckboxGroupElements(elementList, userElementList, onAddFilterItem, onRemoveFilterItem, viewModel, formatItems)
     }
 }
 
 @Composable
-fun CheckboxGroupElements(elementList: List<String>, userElementList: List<String>, onAddFilterItem: (String)->Unit, onRemoveFilterItem: (String)->Unit, viewModel: MainViewModel) {
+fun CheckboxGroupElements(
+    elementList: List<String>,
+    userElementList: List<String>,
+    onAddFilterItem: (String)->Unit,
+    onRemoveFilterItem: (String)->Unit,
+    viewModel: MainViewModel,
+    formatItems: Boolean = true
+) {
     val checkedState = remember(elementList, userElementList) { mutableStateMapOf<String, Boolean>().apply {
         elementList.forEach { this[it] = userElementList.contains(it)}
     } }
@@ -518,7 +533,7 @@ fun CheckboxGroupElements(elementList: List<String>, userElementList: List<Strin
                 }
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = item,
+                    text = if (formatItems) item.toDisplayValue() else item,
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isChecked) {
                         MaterialTheme.colorScheme.onPrimaryContainer

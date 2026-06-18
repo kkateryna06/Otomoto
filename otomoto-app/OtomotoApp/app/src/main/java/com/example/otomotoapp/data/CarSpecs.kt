@@ -48,8 +48,11 @@ data class CarSpecs(
     val location: Location? = null,
     @SerializedName(value = "photoPath", alternate = ["photo_path"])
     val photoPath: String? = null,
+    @SerializedName(value = "photoUrls", alternate = ["photo_urls"])
+    val photoUrls: List<String>? = emptyList(),
     @SerializedName(value = "htmlPath", alternate = ["html_path"])
     val htmlPath: String? = null,
+
 ) {
     val price: Int
         get() = priceHistory

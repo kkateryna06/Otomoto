@@ -12,16 +12,25 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.otomotoapp.data.PreferencesHelper
+import com.example.otomotoapp.MainViewModel
 
 @Composable
-fun SettingsScreen(prefs: PreferencesHelper) {
-    val serverUrl = remember { mutableStateOf(prefs.getServerUrl()) }
+fun SettingsScreen(viewModel: MainViewModel) {
+    val currentServerUrl by viewModel.serverUrl.collectAsState()
+    val serverUrl = remember { mutableStateOf(currentServerUrl) }
+
+    LaunchedEffect(currentServerUrl) {
+        serverUrl.value = currentServerUrl
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -40,7 +49,7 @@ fun SettingsScreen(prefs: PreferencesHelper) {
                 modifier = Modifier.weight(1f)
             )
             OutlinedButton(
-                onClick = { prefs.saveServerUrl(serverUrl.value) },
+                onClick = { viewModel.updateServerUrl(serverUrl.value) },
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary

@@ -4,7 +4,9 @@ import androidx.compose.animation.animateContentSize
 import android.content.Context
 import android.location.Geocoder
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,10 +34,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import com.example.compose.AppTheme
 import com.example.otomotoapp.data.CarSpecs
 import com.example.otomotoapp.R
 import com.example.otomotoapp.data.Location
+import com.example.otomotoapp.ui.toDisplayValueOrDash
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
@@ -43,6 +50,9 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import java.time.LocalDate
+import java.time.LocalDateTime
+import kotlin.math.max
 
 @Composable
 fun DropDownMenu(carSpecs: CarSpecs, textMenu: String, isDropDownMenuExpanded: Boolean = false, modifier: Modifier = Modifier) {
@@ -92,16 +102,16 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
     if (textMenu == "Basic") {
         Column {
             DropDownMenuContentText(parameterName = "Color", parameterValue = carSpecs.color)
-            DropDownMenuContentText(parameterName = "Number of doors", parameterValue = carSpecs.doorCount.toString())
-            DropDownMenuContentText(parameterName = "Number of seats", parameterValue = carSpecs.seats.toString())
-            DropDownMenuContentText(parameterName = "Generation", parameterValue = carSpecs.generation)
+            DropDownMenuContentText(parameterName = "Number of doors", parameterValue = carSpecs.doorCount.toString(), formatValue = false)
+            DropDownMenuContentText(parameterName = "Number of seats", parameterValue = carSpecs.seats?.toString(), formatValue = false)
+            DropDownMenuContentText(parameterName = "Generation", parameterValue = carSpecs.generation, formatValue = false)
         }
     }
     if (textMenu == "Specification") {
         Column {
             DropDownMenuContentText(parameterName = "Fuel type", parameterValue = carSpecs.fuelType)
-            DropDownMenuContentText(parameterName = "Engine capacity", parameterValue = carSpecs.engineCapacity.toString())
-            DropDownMenuContentText(parameterName = "Engine power", parameterValue = carSpecs.enginePower.toString())
+            DropDownMenuContentText(parameterName = "Engine capacity", parameterValue = carSpecs.engineCapacity.toString(), formatValue = false)
+            DropDownMenuContentText(parameterName = "Engine power", parameterValue = carSpecs.enginePower.toString(), formatValue = false)
             DropDownMenuContentText(parameterName = "Body type", parameterValue = carSpecs.bodyType)
             DropDownMenuContentText(parameterName = "Gearbox", parameterValue = carSpecs.gearbox)
             DropDownMenuContentText(parameterName = "Transmission", parameterValue = carSpecs.transmission)
@@ -118,6 +128,9 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
             )
         }
     }
+    if (textMenu == "Price history") {
+        PriceHistoryContent(carSpecs)
+    }
     if (textMenu == "Location") {
         val location = carSpecs.location
         if (location != null) {
@@ -129,7 +142,7 @@ fun DropDownMenuContent(carSpecs: CarSpecs, textMenu: String) {
 }
 
 @Composable
-fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
+fun DropDownMenuContentText(parameterName: String, parameterValue: String?, formatValue: Boolean = true) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -144,7 +157,7 @@ fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = parameterValue ?: "-",
+            text = if (formatValue) parameterValue.toDisplayValueOrDash() else parameterValue ?: "-",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f),
@@ -152,6 +165,197 @@ fun DropDownMenuContentText(parameterName: String, parameterValue: String?) {
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
+
+@Composable
+fun PriceHistoryContent(carSpecs: CarSpecs) {
+    val points = carSpecs.priceHistory
+        ?.entries
+        ?.mapNotNull { entry ->
+            parsePriceHistoryDate(entry.key)?.let { date ->
+                PricePoint(date = date, price = entry.value)
+            }
+        }
+        ?.sortedBy { it.date }
+        .orEmpty()
+
+    val currentPrice = points.lastOrNull()?.price ?: carSpecs.price
+    val hasPriceChanges = points.map { it.price }.distinct().size > 1
+
+    if (!hasPriceChanges) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
+            Text(
+                text = "Current price",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = if (currentPrice > 0) formatPrice(currentPrice) else "-",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "No price changes recorded",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        return
+    }
+
+    val first = points.first()
+    val last = points.last()
+    val minPoint = points.minBy { it.price }
+    val maxPoint = points.maxBy { it.price }
+    val priceDiff = last.price - first.price
+    val diffText = when {
+        priceDiff > 0 -> "+${formatPrice(priceDiff)}"
+        priceDiff < 0 -> "-${formatPrice(-priceDiff)}"
+        else -> "0 PLN"
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column {
+                Text(
+                    text = "Current price",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = formatPrice(last.price),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Text(
+                text = diffText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = when {
+                    priceDiff < 0 -> Color(0xFF2E7D32)
+                    priceDiff > 0 -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(190.dp)
+                .padding(top = 14.dp, bottom = 8.dp)
+        ) {
+            PriceHistoryChart(points = points)
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatChartDate(first.date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = formatChartDate(last.date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        DropDownMenuContentText(parameterName = "Lowest price", parameterValue = "${formatPrice(minPoint.price)} (${formatChartDate(minPoint.date)})", formatValue = false)
+        DropDownMenuContentText(parameterName = "Highest price", parameterValue = "${formatPrice(maxPoint.price)} (${formatChartDate(maxPoint.date)})", formatValue = false)
+    }
+}
+
+@Composable
+private fun PriceHistoryChart(points: List<PricePoint>) {
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+    val pointColor = MaterialTheme.colorScheme.surface
+    val minPrice = points.minOf { it.price }
+    val maxPrice = points.maxOf { it.price }
+    val priceRange = max(1, maxPrice - minPrice)
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val horizontalPadding = 10.dp.toPx()
+        val verticalPadding = 12.dp.toPx()
+        val chartWidth = size.width - horizontalPadding * 2
+        val chartHeight = size.height - verticalPadding * 2
+
+        repeat(4) { index ->
+            val y = verticalPadding + chartHeight * index / 3f
+            drawLine(
+                color = gridColor,
+                start = Offset(horizontalPadding, y),
+                end = Offset(size.width - horizontalPadding, y),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+
+        val offsets = points.mapIndexed { index, point ->
+            val x = if (points.size == 1) {
+                horizontalPadding + chartWidth / 2f
+            } else {
+                horizontalPadding + chartWidth * index / (points.lastIndex.toFloat())
+            }
+            val normalized = (point.price - minPrice).toFloat() / priceRange
+            val y = verticalPadding + chartHeight - chartHeight * normalized
+            Offset(x, y)
+        }
+
+        if (offsets.size == 1) {
+            drawCircle(color = lineColor, radius = 5.dp.toPx(), center = offsets.first())
+            return@Canvas
+        }
+
+        val linePath = Path().apply {
+            moveTo(offsets.first().x, offsets.first().y)
+            offsets.drop(1).forEach { lineTo(it.x, it.y) }
+        }
+        val fillPath = Path().apply {
+            moveTo(offsets.first().x, size.height - verticalPadding)
+            offsets.forEach { lineTo(it.x, it.y) }
+            lineTo(offsets.last().x, size.height - verticalPadding)
+            close()
+        }
+
+        drawPath(path = fillPath, color = fillColor)
+        drawPath(
+            path = linePath,
+            color = lineColor,
+            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+        )
+        offsets.forEach {
+            drawCircle(color = pointColor, radius = 5.dp.toPx(), center = it)
+            drawCircle(color = lineColor, radius = 4.dp.toPx(), center = it)
+        }
+    }
+}
+
+private data class PricePoint(
+    val date: LocalDate,
+    val price: Int
+)
+
+private fun parsePriceHistoryDate(value: String): LocalDate? =
+    runCatching { LocalDate.parse(value.take(10)) }
+        .getOrElse {
+            runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrNull()
+        }
+
+private fun formatChartDate(date: LocalDate): String =
+    "${date.dayOfMonth.toString().padStart(2, '0')}.${date.monthValue.toString().padStart(2, '0')}.${date.year}"
+
+private fun formatPrice(price: Int): String =
+    "%,d PLN".format(price).replace(',', ' ')
 
 @Composable
 fun CarLocation(location: Location) {

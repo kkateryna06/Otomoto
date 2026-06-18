@@ -8,7 +8,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.otomotoapp.data.PreferencesHelper
 import com.example.otomotoapp.database.FavouriteCarsViewModel
 import com.example.otomotoapp.screens.CarDetailsScreen
 import com.example.otomotoapp.screens.FavouriteCarsScreen
@@ -19,8 +18,7 @@ import com.example.otomotoapp.screens.SettingsScreen
 @Composable
 fun Navigation(navController: NavHostController,
                appBarsViewModel: AppBarsViewModel,
-               viewModel: MainViewModel,
-               prefs: PreferencesHelper
+               viewModel: MainViewModel
 ) {
     val favCarsViewModel: FavouriteCarsViewModel = viewModel()
 
@@ -64,7 +62,7 @@ fun Navigation(navController: NavHostController,
         composable(
             route = Screen.SettingsScreen.route
         ) {
-            SettingsScreen(prefs)
+            SettingsScreen(viewModel)
         }
     }
 }
