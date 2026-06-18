@@ -1,17 +1,24 @@
-# Otomoto cars
+# Otomoto Cars
 
-## Overview
-This project started as a personal tool to track the used car market — to see which cars sell fast and which linger with active listings. The idea was to build a handy Android app that gathers all this data in one place for easy browsing.
+Otomoto Cars is a used-car market tracking project built around Otomoto listings. It collects offers, stores historical market data, exposes that data through an API, and provides an Android app for browsing, filtering, and saving interesting cars.
 
-I also plan to add smart alerts to notify when a great deal pops up. And looking ahead, I want to integrate an AI model that can evaluate cars based on their specs and photos — so you don’t have to be a car expert to know what’s worth your attention.
+The current active stack is:
 
-This project combines web scraping, a robust backend API, and a sleek mobile app to create a seamless experience for car hunters.
+- `CarMarketAnalyzer` - Java Spring Boot backend, scraper, REST API, and scraper-control UI.
+- `otomoto-app/OtomotoApp` - Kotlin Android app.
+- `legacy-python` - old Python scraper and FastAPI server, kept only for reference.
 
+## Demo
 
-## Demo Installation
+Video demo:
 
 [Video Demo](https://youtube.com/shorts/px98Wrb-iyE?feature=share)
 
+Demo APK with mock data:
+
+[Download APK with test data](https://github.com/kkateryna06/Otomoto/releases/tag/v1.0-demo)
+
+The demo APK uses bundled mock data, so only limited features are available. The full app experience requires the Spring Boot backend.
 
 <table>
   <tr>
@@ -44,288 +51,691 @@ This project combines web scraping, a robust backend API, and a sleek mobile app
   </tr>
 </table>
 
+## Repository Structure
 
-
-
-
-
-You can download a demo version of the app from the link below and explore basic functionality without running the server:
-
-[Download APK with test data](https://github.com/kkateryna06/Otomoto/releases/tag/v1.0-demo)
-
- Note: The demo uses mock data, so only limited features are available. A backend server is required for full functionality.
-
-
-## Project Structure
-A brief overview of the three main components of the project:
-
-### otomoto-data-updater/
-A Python module responsible for scraping car listings from Otomoto.pl and updating the local database.
-
-- Allows you to manually specify search result URLs from Otomoto (e.g., sedans under 30,000 PLN) for targeted scraping.
-
-- Parses each listing page and stores structured data in a local PostgreSQL database.
-
-- Automatically downloads car photos and saves them locally - a key part of the project, as visual content adds major value.
-
-- Designed to be run manually, but can be easily scheduled for periodic updates.
-
-Supports two independent datasets:
-- **All cars** — general listings to observe market trends.
-- **Special cars** — focused tracking for specific models you're interested in.
-
-This allows for more organized data analysis or segmentation — but both can be used together or just one of them.
-
-
-### otomoto-server/
-
-A backend API built with FastAPI that serves data from the local database.
-
-- Provides REST endpoints for listing cars, filtering, searching, accessing images, and more.
-
-- Uses SQLAlchemy for database interaction and Pydantic for request/response validation.
-
-- Swagger UI available at /docs for easy testing and development.
-
-- CORS configured for secure communication with the Android app.
-
-### otomoto-app/
-
-A Kotlin-based Android application for browsing and filtering cars.
-
-- Connects to the backend using Retrofit and displays data in a clean, user-friendly interface.
-
-- Includes a filter system (by price, make, model, etc.).
-
-- Uses Room database to store favorite (saved) cars locally.
-
-- Contains two main screens: a list of available cars and a detailed car view with photos.
-
-- Plans to add user authentication and cloud-based storage for favorites and preferences.
-
-
-## Features
-### Data Collection
-
-- Web scraping of car listings from Otomoto via custom search URLs using BeautifulSoup
-
-- Photo downloading and local storage of vehicle images for rich visual display
-
-- Structured PostgreSQL database to store and update vehicle information
-
-### Backend API (FastAPI)
-
-- REST API for retrieving car data
-
-- Filtering by attributes like make, price, year, etc.
-
-- Swagger UI for interactive API documentation
-
-- Console logging for incoming requests and server actions
-
-### Mobile App (Kotlin)
-
-- Car listing screen and detailed car view
-
-- Filtering UI and saved search support
-
-- Room local database for storing favorite cars
-
-
-## Installation and Setup
-
-### Prerequisites
-
-- Python 3.9+ (for server and scraper)
-
-- PostgreSQL (database)
-
-- Kotlin 1.5+ and Android Studio (for mobile app)
-
-- Additional: pip for installing Python dependencies
-
-### Before running the project, make sure to:
-
-Fill in links_config.txt with your own Otomoto search URLs.
-
-1. Go to otomoto.pl
-
-2. Use the filters to define your desired criteria (e.g. body type, price range, mileage)
-
-3. Important: In the search settings, choose sorting by "newest"
-
-4. Copy the full URL from the browser and paste it into links_config.txt
-
-5. Split links into two groups using comments:
-
-```
-# ALL CARS
-https://www.otomoto.pl/osobowe?search%5Bfilter_float_price%3Ato%5D=30000
-https://www.otomoto.pl/osobowe/dolnoslaskie?search%5Bfilter_float_mileage%3Ato%5D=100000&search%5Bfilter_float_price%3Ato%5D=50000
-
-# SPECIAL CARS
-https://www.otomoto.pl/osobowe/bmw/6g
-https://www.otomoto.pl/osobowe/audi/a6
+```text
+CarMarketAnalyzer/          Active Java Spring Boot backend and scraper
+otomoto-app/OtomotoApp/     Active Android mobile app
+legacy-python/              Old Python scraper and FastAPI server, legacy only
+screenshots/                App screenshots used in this README
 ```
 
-Set up your database connection in `db_config`.py (located in the root directory):
-```
-DATABASE_URL = "postgres://{user}:{password}@{hostname}:{port}/{database_name}"
+## Backend: CarMarketAnalyzer
 
-DB_SETTINGS = {
-    "host": "localhost",
-    "database": "database_name",
-    "user": "user",
-    "password": "password",
-    "port": "port"
+`CarMarketAnalyzer` is the current backend and scraper. It collects listings from `otomoto.pl`, stores them in PostgreSQL, serves the data through REST endpoints, and provides a local browser UI for scraper control.
+
+Main capabilities:
+
+- Scrapes Otomoto search result pages from a configurable search URL.
+- Finds listing links containing `/oferta/`.
+- Opens each listing and parses data from `script#__NEXT_DATA__`.
+- Stores cars in PostgreSQL in the `cars_info` table.
+- Updates existing rows by listing URL instead of inserting duplicates.
+- Tracks `currentPrice` and JSON `priceHistory`.
+- Adds a price-history entry only when the price changes.
+- Stores all remote photo URLs and downloads a limited number of local photos.
+- Rechecks already stored active listings directly by URL.
+- Marks a listing inactive only after 2 confirmed `404` or `410` responses.
+- Keeps listings active on temporary/inconclusive errors such as `403`, `429`, `5xx`, timeout, or missing `__NEXT_DATA__`.
+- Supports manual scraping, manual rechecks, interval schedules, and daily schedules.
+
+Tech stack:
+
+- Java 21
+- Spring Boot
+- Spring Web MVC
+- Spring Data JPA / Hibernate
+- PostgreSQL
+- jsoup
+- Lombok
+- Gradle
+
+## Backend Setup
+
+Create a PostgreSQL database:
+
+```sql
+CREATE DATABASE otomoto;
+```
+
+Database settings are read from `CarMarketAnalyzer/src/main/resources/application.properties` and can be overridden with environment variables:
+
+```properties
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/otomoto}
+spring.datasource.username=${DB_USERNAME:postgres}
+spring.datasource.password=${DB_PASSWORD:}
+spring.jpa.hibernate.ddl-auto=update
+```
+
+PowerShell example:
+
+```powershell
+$env:DB_URL="jdbc:postgresql://localhost:5432/otomoto"
+$env:DB_USERNAME="postgres"
+$env:DB_PASSWORD="your-local-password"
+```
+
+Run the backend:
+
+```powershell
+cd CarMarketAnalyzer
+.\gradlew.bat bootRun
+```
+
+Backend URL:
+
+```text
+http://localhost:8080
+```
+
+Scraper browser UI:
+
+```text
+http://localhost:8080/
+```
+
+## Scraper UI
+
+The browser UI is the easiest way to control the scraper locally.
+
+It allows you to:
+
+- Set the Otomoto `Search URL`.
+- Set `Max recheck listings per run`.
+- Start a scrape manually.
+- Start a direct recheck manually.
+- Enable interval or daily schedules for scraping.
+- Enable interval or daily schedules for rechecks.
+- Disable schedules.
+- View scraper status, next run times, last run result, and stored car count.
+
+Typical workflow:
+
+1. Start the backend.
+2. Open `http://localhost:8080/`.
+3. Paste an Otomoto search URL into `Search URL`.
+4. Set `Max recheck listings per run`.
+5. Click `Save Settings`.
+6. Click `Run Scrape`.
+7. Watch `Last result`, `Next run`, `Next recheck`, and `Cars`.
+8. Use `Recheck Listings` when you only want to update prices and actuality for already saved listings.
+
+## REST API
+
+Base URL:
+
+```text
+http://localhost:8080
+```
+
+### Scraper API
+
+#### Start Scrape
+
+```http
+GET /api/scraper/scrape
+```
+
+Starts scraping in a background thread. If the scraper is already running, the endpoint returns:
+
+```text
+Scraper is already running.
+```
+
+#### Start Recheck
+
+```http
+GET /api/scraper/recheck
+```
+
+Starts a direct recheck of stored active listings without reading the search page.
+
+#### Get Scraper Status
+
+```http
+GET /api/scraper/status
+```
+
+Returns scraper state and schedule metadata.
+
+Response fields include:
+
+- `running`
+- `scheduleEnabled`
+- `scheduleMode`
+- `intervalMinutes`
+- `timeOfDay`
+- `recheckScheduleEnabled`
+- `recheckScheduleMode`
+- `recheckIntervalMinutes`
+- `recheckTimeOfDay`
+- `searchUrl`
+- `lastSearchUrl`
+- `nextRunAt`
+- `recheckNextRunAt`
+- `lastStartedAt`
+- `lastFinishedAt`
+- `lastTrigger`
+- `lastResult`
+
+Example `lastResult`:
+
+```text
+Completed: found 45, saved 43, errors 2
+```
+
+#### Get Scraper Settings
+
+```http
+GET /api/scraper/settings
+```
+
+Example response:
+
+```json
+{
+  "searchUrl": "https://www.otomoto.pl/osobowe",
+  "maxRecheckListingsPerRun": 100
 }
 ```
 
-### Data Updater Setup
+#### Update Scraper Settings
 
-1. Install dependencies:
+```http
+PUT /api/scraper/settings
+Content-Type: application/json
 
-```
-pip install -r requirements.txt
-```
-
-2. Go to otomoto-data-updater/ directory
-
-```
-cd otomoto-data-updater
+{
+  "searchUrl": "https://www.otomoto.pl/osobowe/bmw",
+  "maxRecheckListingsPerRun": 100
+}
 ```
 
-3. Paste the Otomoto search URLs of interest into configuration file `config.txt`
+Validation:
 
-4. Run the script:
+- `searchUrl` must use `https`.
+- Host must be `otomoto.pl` or a subdomain of `otomoto.pl`.
+- Path must start with `/osobowe`.
+- `maxRecheckListingsPerRun` must be between 1 and 1000.
 
+#### Configure Scrape Schedule
 
-```
-python main.py
-```
+Enable interval scraping:
 
-### Server Setup
+```http
+POST /api/scraper/schedule
+Content-Type: application/json
 
-1. Install dependencies:
-
-```
-pip install -r requirements.txt
-```
-
-3. Configure environment variables in **db_config.py**:
-
-```
-DATABASE_URL=postgresql://user:password@localhost/dbname
+{
+  "enabled": true,
+  "intervalMinutes": 60
+}
 ```
 
-4. Start the server:
+Enable daily scraping:
 
-```
-uvicorn otomoto-server.app.main:app --host 0.0.0.0 --port 8000 --reload
-```
+```http
+POST /api/scraper/schedule
+Content-Type: application/json
 
-5. Open Swagger UI in a browser at: http://localhost:8000/docs
-
-### Mobile App Setup
-
-1. Open the otomoto-app/ directory in Android Studio
-
-2. Sync the project with Gradle
-
-3. Run the application on an emulator or real device
-
-4. If necessary, change the server URL in the code to http://localhost:8000 (or the server IP address)
-
-
-## Usage
-### Data Updater
-
-The updater script handles scraping and updating vehicle listings from Otomoto.pl.
-It supports two types of actions and two target datasets:
-
-1. **Choose an action:**
-```
-1 - collect new ads
-2 - update relevant (check if saved listings are still active)
+{
+  "enabled": true,
+  "timeOfDay": "03:00"
+}
 ```
 
-2. **Choose target dataset:**
-```
-1 - All cars (general market listings)
-2 - Special cars (personal interest listings)
-```
+Disable scheduled scraping:
 
-> "All cars" is used to track the general market (e.g. all cars under 20,000 PLN). 
-> "Special cars" is meant for focused tracking of specific models or brands you're personally interested in.
+```http
+POST /api/scraper/schedule
+Content-Type: application/json
 
-**Note:** If you're only using one dataset (e.g. All cars), you can consistently select `1` for both prompts.
-
-The script will fetch or update data accordingly, saving it to the corresponding database and downloading car photos.
-
-### Server API
-
-Examples of endpoints:
-
-```
-GET /allcars — get a list of all cars
-
-GET /allcars/{id} — get details of a specific car
-
-GET /allcars/search/{value} — get unique field values (e.g. mark)
-
-GET /allcars/searchminmax/{value} — minimum and maximum values (e.g. price)
-
-GET /allcars/{id}/photo — get a photo by ID
+{
+  "enabled": false
+}
 ```
 
-_Authorization is not required yet._
+#### Configure Recheck Schedule
 
-### Mobile App
-The application allows you to conveniently view and filter cars:
+Enable interval rechecks:
 
-- Main screen with a general list of cars
+```http
+POST /api/scraper/recheck/schedule
+Content-Type: application/json
 
-- Detailed screen with characteristics and a photo
-
-- Local saving of saved cars via Room Database
-
-- Filtering by parameters (will be expanded)
-
-- Launch is performed via Android Studio (see the Installation section).
-
-### API Documentation
-Full documentation for the API is available at:
-
-```
-http://localhost:8000/docs
+{
+  "enabled": true,
+  "intervalMinutes": 180
+}
 ```
 
-Swagger UI allows you to:
+Enable daily rechecks:
 
-- Test endpoints directly in the browser
+```http
+POST /api/scraper/recheck/schedule
+Content-Type: application/json
 
-- View possible request parameters
+{
+  "enabled": true,
+  "timeOfDay": "06:00"
+}
+```
 
-- See the structure of the returned data
+Disable scheduled rechecks:
 
+```http
+POST /api/scraper/recheck/schedule
+Content-Type: application/json
 
-## Future Plans
-- ML model for evaluating ads based on characteristics and photos
-- Analytics on the car market — which cars are sold faster, which ones stagnate
-- Price tracking for specific ads
-- Sorting ads on the main screen (by price, date, etc.)
-- Search by model/brand (currently not implemented)
-- Push notifications when interesting cars appear
-- Authorization and synchronization of favorites via account
-- Ability to add links to desired cars via the app
-- Complete redesign of the app (light/dark theme, aesthetic UI, animations)
-- Option to set number of cars per page (e.g. 10 / 20 / 50)
+{
+  "enabled": false
+}
+```
 
-## Final words
-This isn’t just another to-do app or a movie list built from a tutorial. This project is personal — born from curiosity, built with care, and driven by a real passion for cars and technology.
+### Cars API
 
-I wanted a tool to help me explore and understand the used car market more deeply. Over time, I’ve poured not just code, but time, thought, and a bit of soul into it.
+#### Endpoint Summary
 
-If it looks a little raw in places — that’s because it’s alive. And I’m always learning, improving, and dreaming about what’s next.  
+```http
+GET    /api/cars
+GET    /api/cars?page=0&size=20
+GET    /api/cars/{id}
+GET    /api/cars/count
+GET    /api/cars/brands
+GET    /api/cars/models?brand=Audi
+GET    /api/cars/fuel-types
+GET    /api/cars/body-types
+GET    /api/cars/gearboxes
+GET    /api/cars/transmissions
+POST   /api/cars
+DELETE /api/cars/{id}
+```
 
-:D
+#### List Cars
+
+```http
+GET /api/cars
+```
+
+Without query parameters, this returns all cars for compatibility. For normal use, prefer pagination:
+
+```http
+GET /api/cars?page=0&size=20
+```
+
+Pagination rules:
+
+- `page` is zero-based.
+- `size` must be between 1 and 100.
+- Any filter parameter switches the response to a Spring Page response.
+
+Supported filters:
+
+| Parameter | Example |
+| --- | --- |
+| `q` | `q=audi` |
+| `brand`, `model`, `fuelType`, `bodyType`, `gearbox`, `transmission`, `sellerType` | `brand=Audi&brand=BMW` |
+| `minYear`, `maxYear` | `minYear=2018&maxYear=2024` |
+| `minMileage`, `maxMileage` | `maxMileage=120000` |
+| `minPrice`, `maxPrice` | `minPrice=20000&maxPrice=60000` |
+| `minEngineCapacity`, `maxEngineCapacity` | `minEngineCapacity=1400` |
+| `minEnginePower`, `maxEnginePower` | `minEnginePower=100` |
+| `actual` | `actual=true` |
+| `postedFrom`, `postedTo` | `postedFrom=2026-06-01T00:00:00Z` |
+| `sortBy`, `sortDirection` | `sortBy=year&sortDirection=desc` |
+
+Allowed `sortBy` values:
+
+```text
+id, brand, model, year, mileage, currentPrice,
+engineCapacity, enginePower, postedAt, lastSeenAt, lastCheckedAt
+```
+
+Text filters are case-insensitive.
+
+Examples:
+
+```bash
+curl http://localhost:8080/api/cars/count
+curl "http://localhost:8080/api/cars?page=0&size=20"
+curl "http://localhost:8080/api/cars?page=0&size=20&brand=Audi&minYear=2018&maxPrice=60000&actual=true&sortBy=currentPrice&sortDirection=asc"
+curl http://localhost:8080/api/cars/brands
+curl "http://localhost:8080/api/cars/models?brand=Audi"
+curl http://localhost:8080/api/cars/1
+```
+
+#### Get Car By ID
+
+```http
+GET /api/cars/{id}
+```
+
+Returns a single car by internal database ID.
+
+#### Count Cars
+
+```http
+GET /api/cars/count
+```
+
+Returns the number of stored cars.
+
+#### Dictionary Endpoints
+
+These endpoints return values useful for app filters:
+
+```http
+GET /api/cars/brands
+GET /api/cars/models?brand=Audi
+GET /api/cars/fuel-types
+GET /api/cars/body-types
+GET /api/cars/gearboxes
+GET /api/cars/transmissions
+```
+
+#### Add Car Manually
+
+```http
+POST /api/cars
+Content-Type: application/json
+
+{
+  "brand": "BMW",
+  "model": "320i",
+  "year": 2020,
+  "mileage": 50000,
+  "fuelType": "petrol",
+  "engineCapacity": 2000,
+  "bodyType": "sedan",
+  "gearbox": "automatic",
+  "url": "https://example.com/car",
+  "description": "Manual entry"
+}
+```
+
+Equivalent curl:
+
+```bash
+curl -X POST http://localhost:8080/api/cars \
+  -H "Content-Type: application/json" \
+  -d '{
+    "brand": "BMW",
+    "model": "320i",
+    "year": 2020,
+    "mileage": 50000,
+    "fuelType": "petrol",
+    "engineCapacity": 2000,
+    "bodyType": "sedan",
+    "gearbox": "automatic",
+    "url": "https://example.com/car",
+    "description": "Manual entry"
+  }'
+```
+
+#### Delete Car
+
+```http
+DELETE /api/cars/{id}
+```
+
+Example:
+
+```bash
+curl -X DELETE http://localhost:8080/api/cars/1
+```
+
+### Photos API
+
+Local photos are served by Spring through:
+
+```text
+/photos/**
+```
+
+The scraper separates remote links from local files:
+
+- `photoUrls` stores all image URLs found in the Otomoto listing JSON.
+- `localPhotoPaths` stores downloaded local photos.
+- `photoPath` stores the first local photo and is used as the cover.
+
+Example photo URL:
+
+```text
+http://localhost:8080/photos/audi-a4-2020-abc123/cover.jpg
+```
+
+## Data Model
+
+Entity:
+
+```text
+com.example.carmarketanalyzer.data.Car
+```
+
+Database table:
+
+```text
+cars_info
+```
+
+Main fields:
+
+| Field | Description |
+| --- | --- |
+| `id` | Primary key |
+| `brand`, `model` | Car brand and model |
+| `version`, `generation` | Version and generation |
+| `year`, `mileage` | Production year and mileage |
+| `fuelType` | Fuel type from Otomoto technical value |
+| `engineCapacity`, `enginePower` | Engine displacement and power |
+| `currentPrice` | Latest known price |
+| `priceHistory` | JSON map: timestamp -> price |
+| `bodyType`, `gearbox`, `transmission` | Body type, gearbox, and transmission |
+| `urbanConsumption`, `extraUrbanConsumption` | Fuel consumption, when present |
+| `color`, `doorCount`, `seats`, `sellerType` | Additional listing details |
+| `url` | Listing URL |
+| `location` | JSON location object |
+| `photoPath` | Cover photo, usually `/photos/.../cover.jpg` |
+| `photoUrls` | All found photo URLs from the listing |
+| `localPhotoPaths` | Public paths of downloaded local photos |
+| `htmlPath` | Reserved field for an HTML snapshot |
+| `description` | Listing description |
+| `postedAt` | Listing creation date from Otomoto |
+| `actual` | Whether the listing is considered active |
+| `lastSeenAt` | Last time the listing was successfully seen |
+| `lastCheckedAt` | Last time the listing URL was checked |
+| `disappearedAt` | When the listing was confirmed as disappeared |
+| `unavailableChecksCount` | Consecutive confirmed unavailable checks |
+
+Example `location`:
+
+```json
+{
+  "city": "Leszno",
+  "region": "wielkopolskie",
+  "postalCode": "64-100",
+  "latitude": 51.82748484,
+  "longitude": 16.49790597,
+  "zoom": 16,
+  "radius": 0
+}
+```
+
+Example `priceHistory`:
+
+```json
+{
+  "2026-06-18T10:15:30Z": 45000,
+  "2026-06-20T09:40:12Z": 43500
+}
+```
+
+## Android App
+
+`otomoto-app/OtomotoApp` is the mobile client for browsing car offers from the backend.
+
+Main capabilities:
+
+- Browse paginated car listings.
+- Search offers by text query.
+- Filter by brand, model, fuel type, body type, gearbox, transmission, seller type, price, year, mileage, engine capacity, and engine power.
+- View offer details, description, price history, photos, and location map.
+- Browse photos in a swipeable carousel.
+- Save and remove favourite cars.
+- Persist favourites locally with Room.
+- Configure backend server URL from the Settings screen.
+- Fall back to bundled mock data in debug builds when the API is unavailable.
+
+Tech stack:
+
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Navigation Compose
+- Retrofit
+- Gson
+- Coil
+- Room
+- Google Maps Compose
+
+### Android Setup
+
+Open this directory in Android Studio:
+
+```text
+otomoto-app/OtomotoApp
+```
+
+For Android Emulator, use:
+
+```text
+http://10.0.2.2:8080/
+```
+
+For a physical Android device, use the local network IP address of the machine running the backend:
+
+```text
+http://<computer-lan-ip>:8080/
+```
+
+The server URL can also be changed inside the app:
+
+```text
+Menu -> Settings -> Server URL -> Save
+```
+
+Google Maps requires a key in `local.properties`:
+
+```properties
+MAPS_API_KEY=your_api_key_here
+```
+
+Build from the Android project directory:
+
+```powershell
+cd otomoto-app/OtomotoApp
+.\gradlew.bat assembleDebug
+```
+
+The app expects these backend paths:
+
+```text
+GET /api/cars
+GET /api/cars/{id}
+GET /api/cars/{filterName}
+GET /photos/{photoPath}
+```
+
+## Checks And Tests
+
+Compile backend:
+
+```powershell
+cd CarMarketAnalyzer
+.\gradlew.bat compileJava
+```
+
+Run backend tests:
+
+```powershell
+cd CarMarketAnalyzer
+.\gradlew.bat test
+```
+
+Note: the current `@SpringBootTest` starts the Spring context with real datasource settings. If PostgreSQL is unavailable or DB credentials are missing, tests can fail on database connection.
+
+Build Android debug APK:
+
+```powershell
+cd otomoto-app/OtomotoApp
+.\gradlew.bat assembleDebug
+```
+
+## Troubleshooting
+
+### Backend does not start because of PostgreSQL
+
+Check:
+
+- PostgreSQL is running.
+- The `otomoto` database exists.
+- `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` are correct.
+
+### Scraper saves no cars
+
+Check:
+
+```bash
+curl http://localhost:8080/api/scraper/status
+curl http://localhost:8080/api/cars/count
+```
+
+Likely causes:
+
+- Otomoto changed the HTML/JSON page structure.
+- There is no access to `otomoto.pl`.
+- The site is blocking requests.
+- The search page has no `/oferta/` links.
+- The listing does not contain `script#__NEXT_DATA__`.
+
+### Price is not duplicated in `priceHistory`
+
+This is expected. A new `priceHistory` entry is added only when the current price differs from the latest stored price.
+
+### A listing is still actual after one 404
+
+This is expected. The scraper requires 2 consecutive confirmed `404` or `410` responses before setting `actual=false`.
+
+### Android emulator cannot reach backend
+
+Use this URL in app settings:
+
+```text
+http://10.0.2.2:8080/
+```
+
+For a physical phone, use the computer's LAN IP address instead of `localhost`.
+
+## Legacy Python
+
+`legacy-python` contains the previous Python scraper and FastAPI server:
+
+- `legacy-python/otomoto-data-updater` - old scraper and database updater.
+- `legacy-python/otomoto-server` - old FastAPI API.
+
+This code is no longer active. It is kept only for reference, old experiments, or recovering implementation details.
+
+Brief documentation is available in:
+
+```text
+legacy-python/README.md
+```
+
+## Roadmap
+
+- Better market analytics: which cars sell quickly and which stay listed.
+- Smarter price tracking and deal detection.
+- Push notifications for interesting listings.
+- Account-based sync for favourites and preferences.
+- ML/AI-based listing evaluation using specs and photos.
+- Further Android UI polish and filtering improvements.
