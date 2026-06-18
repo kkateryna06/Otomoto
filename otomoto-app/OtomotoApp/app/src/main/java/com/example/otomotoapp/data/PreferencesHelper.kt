@@ -6,8 +6,8 @@ class PreferencesHelper(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     private companion object {
-        const val DEFAULT_SERVER_URL = "http://192.168.1.12:8080/"
-        const val LEGACY_SERVER_URL = "http://192.168.1.12:8000/"
+        const val DEFAULT_SERVER_URL = "http://10.0.2.2:8080/"
+        const val LEGACY_SERVER_URL = "http://10.0.2.2:8000/"
     }
 
     fun saveServerUrl(url: String) {
