@@ -17,7 +17,7 @@ class BaseCar(Base):
     fuel_type = Column(String)
     engine_capacity = Column(Integer, index=True)
     engine_power = Column(Integer, index=True)
-    price = Column(Float)
+    price = Column(String)
     body_type = Column(String, index=True)
     gearbox = Column(String)
     transmission = Column(String)

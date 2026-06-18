@@ -1,6 +1,13 @@
+import psycopg2
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
+
+from bs4 import BeautifulSoup
+
 from database_update import update_database, get_all_car_links_for_relevant_check
+from db_config import DB_SETTINGS
+from update_new_ads import extract_json_from_script_tag
+import json
 
 
 # Function to check the link
@@ -19,15 +26,55 @@ def fetch_html(url):
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()  # Check for a successful response
-        return True
+        return response.text
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
             return False
         return None
 
 
+def update_price(html):
+    json_data = extract_json_from_script_tag(html)
+
+    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    advert = json_data.get("props", {}).get("pageProps", {}).get("advert", {})
+    price = advert.get("price", {}).get("value", None)
+    try:
+        price = int(price)
+    except:
+        price = 0
+        print("Error converting price to integer")
+    id = advert.get("id")
+
+    update_data = json.dumps({current_date: price})
+
+    conn = psycopg2.connect(**DB_SETTINGS)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE cars_info
+        SET price = COALESCE(price, '{}'::jsonb) || %s::jsonb
+        WHERE car_id = %s
+          AND (
+            price IS NULL
+            OR (
+              SELECT value::int
+              FROM jsonb_each_text(price)
+              ORDER BY key DESC
+              LIMIT 1
+            ) <> %s
+          )
+        """,
+        (update_data, id, price)
+    )
+
+    conn.commit()
+
+
 # Function to update the "Relevant" column
-def update_relevant_column_with_openpyxl(database_table, date):
+def update_relevant(database_table, date):
     """
     Checks all links in the database table.
     If the link is "dead" (the page has been deleted), updates the record in the database,
@@ -41,7 +88,9 @@ def update_relevant_column_with_openpyxl(database_table, date):
         for link in links:
             print(f"Checking {link}")
             is_active = fetch_html(link)  # Check if the URL is available
-            if not is_active:
+            if is_active:
+                update_price(is_active)
+            else:
                 update_database([link, date], "car_relevant", database_table)
         print("Db has been successfully updated!")
     except Exception as e:
@@ -50,6 +99,6 @@ def update_relevant_column_with_openpyxl(database_table, date):
 
 def task_relevant(database_table):
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    update_relevant_column_with_openpyxl(database_table, date)
+    update_relevant(database_table, date)
     with open("logs.txt", "a", encoding="utf-8") as f:  # "a" to append, "w" to overwrite
         f.write(f'Relevant info in {database_table} was updated {date}\n')  # Log

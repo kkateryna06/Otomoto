@@ -11,6 +11,7 @@ if there are no errors you can continue :)
 if you see the inscription "✅Everything is okay!✅", then everything is working correctly
 """
 import os
+from pathlib import Path
 import signal
 import subprocess
 import time
@@ -21,6 +22,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 import db_config
+
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
 
 def check_db_local_connection():
     try:
@@ -62,7 +66,7 @@ def create_table_query(db_table):
         fuel_type text,
         engine_capacity int,
         engine_power int,
-        price int,
+        price jsonb,
         body_type text,
         gearbox text,
         transmission text,
@@ -72,7 +76,6 @@ def create_table_query(db_table):
         door_count int,
         nr_seats int,
         generation text,
-        has_registration boolean,
         seller_type text,
         link text,
         location jsonb,
@@ -110,7 +113,7 @@ def create_database_table():
             conn.close()
 
 
-def check_links(filepath="links_config.txt"):
+def check_links(filepath=BASE_DIR / "links_config.txt"):
     all_links = []
     special_links = []
 
@@ -158,7 +161,8 @@ def check_server_connection(url="http://127.0.0.1:8000/"):
 def start_and_check_server():
     print("🚀 Starting server...")
     process = subprocess.Popen(
-        ["uvicorn", "otomoto-server.app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+        ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+        cwd=ROOT_DIR / "otomoto-server",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

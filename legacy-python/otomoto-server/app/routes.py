@@ -3,7 +3,7 @@ import os
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import asc, cast, String, text, distinct, func
+from sqlalchemy import asc, cast, String, text, distinct, func, literal
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse, StreamingResponse
 from PIL import Image
@@ -52,6 +52,7 @@ def get_all_cars(
         max_extra_urban_consumption: Optional[float] = Query(None),
         page: int = Query(0, ge=0),
         page_size: int = Query(20, gt=0),
+        mark_model_search: Optional[str] = Query(None)
 ):
     print(f"Raw mark param: {mark}")
     query = db.query(
@@ -62,10 +63,10 @@ def get_all_cars(
         query = query.filter(Car.mark.in_(mark))
     # if model:
     #     query = query.filter(Car.model == model)
-    if min_price:
-        query = query.filter(Car.price >= min_price)
-    if max_price:
-        query = query.filter(Car.price <= max_price)
+    # if min_price:
+    #     query = query.filter(Car.price >= min_price)
+    # if max_price:
+    #     query = query.filter(Car.price <= max_price)
     if min_year:
         query = query.filter(Car.year >= min_year)
     if max_year:
@@ -90,6 +91,12 @@ def get_all_cars(
         query = query.filter(Car.extra_urban_consumption >= min_extra_urban_consumption)
     if max_extra_urban_consumption:
         query = query.filter(Car.extra_urban_consumption <= max_extra_urban_consumption)
+
+    if mark_model_search:
+        query.filter(
+            func.concat(Car.mark, literal(" "), Car.model).like(f"%{mark_model_search}%") |
+            Car.model.like(f"%{mark_model_search}%")
+        )
 
     cars = query.order_by(asc(Car.mark)).all()
 
@@ -148,6 +155,7 @@ def get_special_cars(
         max_extra_urban_consumption: Optional[float] = Query(None),
         page: int = Query(0, ge=0),
         page_size: int = Query(20, gt=0),
+        mark_model_search: Optional[str] = Query(None)
 ):
     query = db.query(SpecialCar)
 
@@ -155,10 +163,10 @@ def get_special_cars(
         query = query.filter(SpecialCar.mark.in_(mark))
     # if model:
     #     query = query.filter(SpecialCar.model == model)
-    if min_price:
-        query = query.filter(SpecialCar.price >= min_price)
-    if max_price:
-        query = query.filter(SpecialCar.price <= max_price)
+    # if min_price:
+    #     query = query.filter(SpecialCar.price >= min_price)
+    # if max_price:
+    #     query = query.filter(SpecialCar.price <= max_price)
     if min_year:
         query = query.filter(SpecialCar.year >= min_year)
     if max_year:
@@ -183,6 +191,12 @@ def get_special_cars(
         query = query.filter(SpecialCar.extra_urban_consumption >= min_extra_urban_consumption)
     if max_extra_urban_consumption:
         query = query.filter(SpecialCar.extra_urban_consumption <= max_extra_urban_consumption)
+
+    if mark_model_search:
+        query.filter(
+            func.concat(SpecialCar.mark, literal(" "), SpecialCar.model).like(f"%{mark_model_search}%") |
+            SpecialCar.model.like(f"%{mark_model_search}%")
+        )
 
     cars = query.order_by(asc(SpecialCar.mark)).all()
 

@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 import pandas as pd
 import os
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from bs4 import BeautifulSoup
 
 from database_update import update_database, get_all_car_links, get_all_car_links_for_relevant_check
@@ -193,6 +193,7 @@ def extract_car_data(link, json_data):
     :param json_data: JSON data from the script tag
     :return: Dictionary with car data
     """
+    currentDate = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     advert = json_data.get("props", {}).get("pageProps", {}).get("advert", {})
 
     # BASIC INFORMATION
@@ -219,14 +220,14 @@ def extract_car_data(link, json_data):
         urban_consumption = extract_param("urban_consumption", parameters)
         mileage = extract_param("mileage", parameters)
 
-        # CONDITION HISTORY
-        if extract_param("registered", parameters) == "1":
-            has_registration = True
-        else:
-            has_registration = False
-
         # ADVERT INFO
         price = advert.get("price", {}).get("value", None)
+        try:
+            price = int(price)
+        except:
+            price = 0
+            print("Error converting price to integer")
+        price = json.dumps({currentDate: price})
         date = advert.get("createdAt", None)
         id = advert.get("id")
         description = clean_html_description(advert.get("description", None))
@@ -239,11 +240,11 @@ def extract_car_data(link, json_data):
         location = json.dumps(location)
 
         # PATH
-        base_folder_photo = r"C:\Users\katya\Desktop\otomoto\otomoto-data-updater\car_photos"
+        base_folder_photo = Path(__file__).resolve().parent / "car_photos"
         photo_folder = urllib.parse.quote(link, safe='')
         photo_path = os.path.join(base_folder_photo, photo_folder)
 
-        base_folder_html = r"C:\Users\katya\Desktop\otomoto\otomoto-data-updater\car_htmls"
+        base_folder_html = Path(__file__).resolve().parent / "car_htmls"
         html_folder = urllib.parse.quote(link, safe='')
         html_path = os.path.join(base_folder_html, html_folder)
 
@@ -260,7 +261,7 @@ def extract_car_data(link, json_data):
             "body_type": body_type, "gearbox": gearbox,
             "transmission": transmission, "urban_consumption": urban_consumption,
             "extra_urban_consumption": extra_urban_consumption, "mileage": mileage,
-            "has_registration": has_registration, "price": price, "date": date, "description": description,
+            "price": price, "date": date, "description": description,
             "link": link, "car_id": id, "location": location, "photo_path": photo_path,
             "html_path": html_path, "seller_type": seller_type
         }
@@ -365,9 +366,6 @@ def update_data(url, database_table, excel_table):
                 filtered_dict = {key: car_info[key] for key in car_info if key in new_column_order}
                 try: filtered_dict["year"] = int(float(filtered_dict["year"]))
                 except: pass
-                filtered_dict["price"] = int(float(filtered_dict["price"]))
-                try: filtered_dict["mileage"] = int(filtered_dict["mileage"])
-                except: pass
                 try: filtered_dict["engine_capacity"] = filtered_dict["engine_capacity"] + " cm3"
                 except: pass
                 filtered_dict["relevant"] = "yes"
@@ -386,7 +384,7 @@ def load_links_from_file():
     special_links = []
 
     current_dir = Path(__file__).resolve().parent
-    filepath = current_dir.parent / 'links_config.txt'
+    filepath = current_dir / 'links_config.txt'
     with open(filepath, encoding='utf-8') as f:
         lines = f.readlines()
 

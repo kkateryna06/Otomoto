@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 
 from update_relevant import task_relevant
@@ -28,14 +29,17 @@ elif to_do == 2:
         task_relevant("special_cars_info")
 
 elif to_do == 3:
-    count = 0
+    new_ads_time = datetime.now().hour
+    relevant_check_time = datetime.now().hour
+
     while True:
+        new_ads_time = datetime.now().hour
+
         run_links(all_links, "cars_info", "cars_info.xlsx")
         run_links(special_links, "special_cars_info", "special_cars_info.xlsx")
-        count += 1
 
-        if count == 24:
-            count = 0
+        if -13 > datetime.now().hour - relevant_check_time > 9:
+            relevant_check_time = datetime.now().hour
             task_relevant("cars_info")
             task_relevant("special_cars_info")
 
